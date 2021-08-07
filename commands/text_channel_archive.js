@@ -82,7 +82,7 @@ function extract_message_data(message_collection) {
         let extracted_data = {
 	    id: message.id,
             author: message.author.tag,
-	    send_time: message.createdAt,
+	    time: message.createdAt,
 	    text: message.content
 	};
         extracted_collection.set(message.id, extracted_data);
