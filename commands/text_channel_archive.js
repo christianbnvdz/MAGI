@@ -43,13 +43,17 @@ async function archive_channel(channel) {
 	channel_name: channel.name,
 	channel_topic: channel.topic,
 	channel_creation_date: channel.createdAt,
-	channel_nsfw: channel.nsfw,
-	channel_message_count: 0
+	channel_nsfw: channel.nsfw
     };
 
     // Add message info to the channel_data
     let messages = await get_channel_messages(channel);
-    channel_data.channel_messages = extract_message_data(messages);
+    let [extracted_messages, participants] = extract_message_data(messages);
+    channel_data.channel_participants_count = 0;
+    channel_data.channel_participants = participants;
+    channel_data.channel_participants_count = participants.size;
+    channel_data.channel_message_count = 0;
+    channel_data.channel_messages = extracted_messages;
     channel_data.channel_message_count = channel_data.channel_messages.size;
 
     // Print the result to the console
@@ -66,22 +70,34 @@ async function archive_channel(channel) {
 
 // Takes a <Collection> (snowflake, message) as input
 // Extracts only desired information from each message in the collection
+// Also extracts info about all those who have ever sent a message
 // Returns a new <Collection> (snowflake, object), the original is not modified
+// and a new <Collection> (user snowflake, participant object) as
+// [extracted messages collection, participant collection]
 function extract_message_data(message_collection) {
     let extracted_collection = new Discord.Collection();
+    let participants = new Discord.Collection();
 
     message_collection.each((message) => {
         let extracted_data = {
-            author_id: message.author.id,
+	    id: message.id,
             author: message.author.tag,
-            author_pfp: message.author.displayAvatarURL({dynamic: true}),
 	    send_time: message.createdAt,
 	    text: message.content
 	};
-	extracted_collection.set(message.id, extracted_data);
+        extracted_collection.set(message.id, extracted_data);
+
+	if (!participants.has(message.author.tag)) {
+	    let participant = {
+                tag: message.author.tag,
+		id: message.author.id,
+	        pfp: message.author.displayAvatarURL({dynamic: true})
+	    };
+	    participants.set(message.author.tag, participant);
+	}
     });
 
-    return extracted_collection;
+    return [extracted_collection, participants];
 }
 
 // Get all the messages from a channel of type TextChannel
