@@ -3,8 +3,29 @@ const fs = require('fs');
 
 module.exports = {
 	name: 'archive',
+	usage: 'Usage: ' + process.env.PREFIX + 'archive (help | text)',
+	description: 'Creates a .json archive file of the channel in its current state and uploads it to the same channel where the command was executed. Guild information and channel information is always included. The argument given determines how much of the channel gets archived. "text" will only capture content from messages. "help" displays the usage along with this message.',
 	execute(message, args) {
-            const channel_as_json = scrape_channel(message.channel);
+            console.log(args);
+	    if (args.length == 0) {
+                console.log('No argument passed.');
+		console.log(this.usage);
+		return;
+	    } else if (args.length > 1) {
+                console.log('Too many arguments supplied.');
+		console.log(this.usage);
+		return;
+	    }
+
+	    if (args[0] === 'text') {
+                const channel_as_json = scrape_channel(message.channel);
+            } else if (args[0] === 'help') {
+                console.log(this.usage);
+		console.log(this.description);
+	    } else {
+                console.log('Bad argument.');
+		console.log(this.usage);
+	    }
 	},
 };
 
