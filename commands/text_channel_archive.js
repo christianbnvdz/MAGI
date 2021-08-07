@@ -40,7 +40,12 @@ async function scrape_channel(channel) {
 	// Extract only the data we want from messages
 	messages.each((message) => {
             let message_data = {
-                
+		message_author_id: message.author.id,
+		message_author: message.author.tag,
+		message_author_pfp: message.author.displayAvatarURL({dynamic: true}),
+		message_id: message.id,
+		message_send_time: message.createdAt,
+		message_text: message.content
 	    };
 	    // Use the message snowflake as the key
 	    channel_data.channel_messages.set(message.id, message_data);
@@ -49,12 +54,11 @@ async function scrape_channel(channel) {
 	channel_data.channel_message_count = channel_data.channel_messages.size;
     }
     console.log(channel_data);
-
-    /*fs.writeFile('metadata.json', JSON.stringify(channel_data), 'utf8', () => {});
+    /*fs.writeFile('channel_archive.json', JSON.stringify(channel_data), 'utf8', () => {});
     await channel.send({
 	files: [{
-	    attachment: './metadata.json',
-	    name: 'metadata.json'
+	    attachment: './channel_archive.json',
+	    name: 'channel_archive.json'
 	}]
     });*/
 }
