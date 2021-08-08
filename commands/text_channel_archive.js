@@ -132,7 +132,7 @@ async function get_channel_messages(channel) {
 
 // args is a javascript array and channel is a TextChannel
 // if anything goes wrong the user is sent a message in the
-// TextChannel and stops the command execution. Always returns nothing.
+// TextChannel and stops the command execution. Returns bool.
 function is_valid_command(args, channel) {
     if (args.length === 0) {
         channel.send('No argument provided.');
