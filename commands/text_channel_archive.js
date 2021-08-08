@@ -4,29 +4,35 @@ const fs = require('fs');
 module.exports = {
 	name: 'archive',
 	usage: 'Usage: ' + process.env.PREFIX + 
-	       'archive ((help | metadata | participants | complete) | (text (reactions | stickers | attachments)* | whole-messages)) messages-only?',
-	description: 'Creates a .json representation of what you choose to archive and uploads it to the same channel that the command was executed in.\n\nArguments:\n\nmetadata - only captures guild and channel information.\nparticipants - only captures information about who has ever participated in the channel.\ncomplete - will capture metadata, participants, and message content, reactions, stickers, and attachments.\nhelp - will send the usage and this message to the channel.\n\nOnly one of these arguments can be chosen, and with no trailing arguments, if used. If none of those arguments were used then you can choose how much you want to archive by specifying:\n\ntext - will capture only the textual content for each message. Follow up with "reactions", "stickers", and/or "attachments" to choose what else to capture.\nwhole-messages - will capture textual content, reactions, stickers, and attachments for each message.\nmessages-only - used to ignore metadata and participants.',
+	       'archive ((help | metadata | participants | complete) | (text (reactions | stickers | attachments)* | whole-messages) messages-only?)',
+	recognized_arguments: ['help', 'metadata', 'participants', 'complete', 'text', 'reactions', 'stickers', 'attachments', 'whole-messages', 'messages-only'],
+	description: 'Creates a .json representation of what you choose to archive and uploads it to the same channel that the command was executed in.\n\nArguments:\n\nmetadata - only captures guild and channel information.\nparticipants - only captures information about who has ever participated in the channel.\ncomplete - will capture metadata, participants, and message content, reactions, stickers, and attachments.\nhelp - will send the usage and this message to the channel.\n\nOnly one of these arguments can be chosen with no other arguments accompanying it. If none of those arguments were used then you can choose how much you want to archive by specifying:\n\ntext - will capture only the textual content for each message. Follow up with "reactions", "stickers", and/or "attachments" to choose what else to capture.\nwhole-messages - will capture textual content, reactions, stickers, and attachments for each message.\nmessages-only - used to ignore metadata and participants since they are captured by default.',
 	execute(message, args) {
-	    if (args.length == 0) {
-                console.log('No argument supplied.');
-		console.log(this.usage);
-		return;
-	    } else if (args.length > 1) {
-                console.log('Too many arguments supplied.');
-		console.log(this.usage);
-		return;
-	    }
+	    if (!is_valid_command(args, message.channel)) {return;}
 
-	    if (args[0] === 'text') {
-                archive_channel(message.channel);
-            } else if (args[0] === 'help') {
-                console.log(this.usage);
-		console.log(this.description);
-		//message.channel.send(this.usage);
-		//message.channel.send(this.description);
-	    } else {
-                console.log('Bad argument.');
-		console.log(this.usage);
+	    switch (args[0]) {
+                case 'help':
+		    message.channel.send(this.usage);
+		    message.channel.send(this.description);
+	            break;
+		case 'metadata':
+		    message.channel.send('metadata not implemented');
+		    break;
+		case 'participants':
+                    message.channel.send('participants not implemented');
+		    break;
+	        case 'complete':
+		    message.channel.send('complete not implemented');
+		    break;
+		case 'text':
+	            archive_channel(message.channel);
+	            message.channel.send('No arguments supported. Saving remotely');
+	            break;
+		case 'whole-messages':
+		    message.channel.send('whole-messages not implemented');
+	            break;
+	        default:
+	            console.log('none of the above dispatch');
 	    }
 	}
 };
@@ -122,4 +128,47 @@ async function get_channel_messages(channel) {
     }
 
     return messages;
+}
+
+// args is a javascript array and channel is a TextChannel
+// if anything goes wrong the user is sent a message in the
+// TextChannel and stops the command execution. Always returns nothing.
+function is_valid_command(args, channel) {
+    if (args.length === 0) {
+        channel.send('No argument provided.');
+	channel.send(module.exports.usage);
+        return false;
+    }
+
+    if (args.includes('help') || args.includes('metadata') ||
+	args.includes('participants') || args.includes('complete')) {
+	if (args.length !== 1) {
+	    channel.send('Arguments "help", "metadata", "participants", and "complete" can\'t be accompanied by other arguments.');
+	    channel.send(module.exports.usage);
+            return false;
+	} else {
+            return true;
+	}
+    }
+
+    if (args[0] !== 'text' && args[0] !== 'whole-messages') {
+        channel.send('"text" or "whole-messages" must be specified before other arguments.');
+	channel.send(module.exports.usage);
+	return false;
+    } else if (args[0] === 'whole-messages') {
+        if (args.length > 2) {
+            channel.send('Too many arguments for "whole-messages".');
+	    channel.send(module.exports.usage);
+            return false;
+	} else if (args.length === 2 && args[1] !== 'messages-only') {
+	    channel.send('"messages-only" is the only argument that can come after "whole-messages".');
+	    channel.send(module.exports.usage);
+            return false;
+	}
+	return true;
+    } else {
+        // Assume that any arguments after 'text' are recognized. Order and
+        // duplicates dont matter.
+	return true;
+    }
 }
