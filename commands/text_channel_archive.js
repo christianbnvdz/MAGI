@@ -3,10 +3,10 @@ const fs = require('fs');
 
 module.exports = {
 	name: 'archive',
-	usage: 'Usage: ' + process.env.PREFIX + 'archive (help | text)',
-	description: 'Creates a .json archive file of the channel in its current state and uploads it to the same channel where the command was executed. Guild information and channel information is always included. The argument given determines how much of the channel gets archived. "text" will only capture content from messages. "help" displays the usage along with this message.',
+	usage: 'Usage: ' + process.env.PREFIX + 
+	       'archive ((help | metadata | participants | complete) | (text (reactions | stickers | attachments)* | whole-messages)) messages-only?',
+	description: 'Creates a .json representation of what you choose to archive and uploads it to the same channel that the command was executed in.\n\nArguments:\n\nmetadata - only captures guild and channel information.\nparticipants - only captures information about who has ever participated in the channel.\ncomplete - will capture metadata, participants, and message content, reactions, stickers, and attatchments.\nhelp - will send the usage and this message to the channel.\n\nOnly one of these arguments can be chosen, and with no trailing arguments, if used. If none of those arguments were used then you can choose how much you want to archive by specifying:\n\ntext - will archive only the textual content for each message. Follow up with "reactions", "stickers", and/or "attachments" to choose what else to capture.\nwhole-messages - will capture textual content, reactions, stickers, and attachments for each message.\nmessages-only - used to ignore metadata and participants.',
 	execute(message, args) {
-            console.log('Args: ' + args);
 	    if (args.length == 0) {
                 console.log('No argument supplied.');
 		console.log(this.usage);
@@ -22,6 +22,8 @@ module.exports = {
             } else if (args[0] === 'help') {
                 console.log(this.usage);
 		console.log(this.description);
+		//message.channel.send(this.usage);
+		//message.channel.send(this.description);
 	    } else {
                 console.log('Bad argument.');
 		console.log(this.usage);
@@ -85,12 +87,15 @@ function extract_message_data(message_collection) {
 	    time: message.createdAt,
 	    text: message.content
 	};
+	if (message.pinned) {
+            extracted_data.pinned = true;
+	}
         extracted_collection.set(message.id, extracted_data);
 
 	if (!participants.has(message.author.tag)) {
 	    let participant = {
-                tag: message.author.tag,
 		id: message.author.id,
+                tag: message.author.tag,
 	        pfp: message.author.displayAvatarURL({dynamic: true})
 	    };
 	    participants.set(message.author.tag, participant);
