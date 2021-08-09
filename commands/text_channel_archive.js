@@ -27,17 +27,26 @@ module.exports = {
 		case 'participants':
                     message.channel.send('participants may not be implemented');
 	            out_file = 'participants';
-		    return
+		    return;
 	        case 'complete':
 		    message.channel.send('complete not implemented');
-	            out_file = 'complete_archive';
-	            return;
+		    //args = ['text', 'reactions', 'stickers', 'attachments'];
+		    //archived_data = await get_data(message.channel, args);
+		    out_file = 'complete_archive;
+		    return;
 		case 'text':
 	            archived_data = await get_data(message.channel, args);
 		    out_file = 'channel_archive';
 	            break;
 		case 'whole-messages':
 		    message.channel.send('whole-messages not implemented');
+		    //let only_message_data = false;
+		    //if (args.length === 2) {only_message_data = true;}
+		    //args = ['text', 'reactions', 'stickers', 'attachments'];
+		    //if (only_message_data) {
+		    //    args.push('messages-only');
+		    //}
+		    //archived_data = await get_data(message.channel, args);
 	            out_file = 'channel_archive';
 	            return;
 	        default:
