@@ -10,50 +10,70 @@ module.exports = {
 	execute(message, args) {
 	    if (!is_valid_command(args, message.channel)) {return;}
 
+            if (args[0] === 'help') {
+                message.channel.send(this.usage);
+		message.channel.send(this.description);
+		return;
+	    };
+
+            let archived_data = {};
+	    let out_file = '';
+
 	    switch (args[0]) {
-                case 'help':
-		    message.channel.send(this.usage);
-		    message.channel.send(this.description);
-	            break;
 		case 'metadata':
-		    message.channel.send('metadata not implemented');
+		    archived_data = get_metadata(message.channel);
+	            out_file = 'metadata';
 		    break;
 		case 'participants':
                     message.channel.send('participants not implemented');
-		    break;
+	            out_file = 'participants';
+	            return;
 	        case 'complete':
 		    message.channel.send('complete not implemented');
-		    break;
+	            out_file = 'complete_archive';
+	            return;
 		case 'text':
-	            archive_channel(message.channel);
+	            //archive_channel(message.channel);
 	            message.channel.send('No arguments supported. Saving remotely');
-	            break;
+		    out_file = 'channel_archive';
+	            return;
 		case 'whole-messages':
 		    message.channel.send('whole-messages not implemented');
-	            break;
+	            out_file = 'channel_archive';
+	            return;
 	        default:
 	            console.log('none of the above dispatch');
 	    }
+
+	    out_file += '_' + (new Date()).toISOString() + '.json';
+
+            // This is an async function but it doesn't matter to us how
+	    // long it takes to get there. Nothing here depends on it.
+	    send_JSON_file(message.channel, out_file, archived_data);
 	}
 };
 
 // Takes a TextChannel as input
-// Prints the channel data to the console
-async function archive_channel(channel) {
-    // Get general channel info
-    let channel_data = {
-	guild_id: channel.guild.id,
+// Returns an object with metadata of the guild and channel
+function get_metadata(channel) {
+    const metadata = {
+        guild_id: channel.guild.id,
 	guild_name: channel.guild.name,
 	guild_description: channel.guild.description,
 	guild_creation_date: channel.guild.createdAt,
 	guild_owner_id: channel.guild.ownerID,
-        channel_id: channel.id,
+	channel_id: channel.id,
 	channel_name: channel.name,
 	channel_topic: channel.topic,
 	channel_creation_date: channel.createdAt,
 	channel_nsfw: channel.nsfw
     };
+    return metadata;
+}
 
+// Takes a TextChannel as input
+// Prints the channel data to the console
+async function archive_channel(channel) {
     // Add message info to the channel_data
     let messages = await get_channel_messages(channel);
     let [extracted_messages, participants] = extract_message_data(messages);
@@ -66,14 +86,20 @@ async function archive_channel(channel) {
 
     // Print the result to the console
     console.log(channel_data);
+}
 
-    /*fs.writeFile('channel_archive.json', JSON.stringify(channel_data), 'utf8', () => {});
+// Takes a TextChannel
+// Takes a string consisting of the filename (including extension)
+// Takes the archive object to send in that file
+// Sends the information in the archive object to the channel
+async function send_JSON_file(channel, filename, archive_obj) {
+    fs.writeFile(filename, JSON.stringify(archive_obj), 'utf8', () => {});
     await channel.send({
 	files: [{
-	    attachment: './channel_archive.json',
-	    name: 'channel_archive.json'
+	    attachment: `./${filename}`,
+	    name: filename
 	}]
-    });*/
+    });
 }
 
 // Takes a <Collection> (snowflake, message) as input
