@@ -25,9 +25,11 @@ module.exports = {
 	            out_file = 'metadata';
 		    break;
 		case 'participants':
-                    message.channel.send('participants may not be implemented');
+                    args = ['text', 'reactions'];
+                    archived_data = await get_data(message.channel, args);
+	            archived_data = archived_data.participant_data.participants;
 	            out_file = 'participants';
-		    return;
+		    break;
 	        case 'complete':
 		    message.channel.send('complete not implemented');
 		    //args = ['text', 'reactions', 'stickers', 'attachments'];
