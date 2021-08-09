@@ -68,7 +68,7 @@ async function get_data(channel, args) {
     let data;
 
     let messages = await get_channel_messages(channel);
-    let [message_data, participants] = get_message_data(messages, args);
+    let [message_data, participants] = await get_message_data(messages, args);
 
     if (args.includes('messages-only')) {
         data = message_data;
@@ -125,38 +125,82 @@ async function send_JSON_file(channel, filename, archive_obj) {
 // Returns a new <Collection> (snowflake, object), the original is not modified
 // and a new <Collection> (user snowflake, participant object) as
 // [extracted messages collection, participant collection]
-function get_message_data(message_collection, args) {
+async function get_message_data(message_collection, args) {
     let extracted_collection = new Discord.Collection();
     let participants = new Discord.Collection();
 
-    message_collection.each((message) => {
-        let extracted_data = {
-	    id: message.id,
-            author: message.author.tag,
+    for (const [snowflake, message] of message_collection) {
+        //Basic message_data
+	let extracted_data = {
+            id: message.id,
+	    author: message.author.tag,
 	    time: message.createdAt,
 	    text: message.content
 	};
 	if (message.pinned) {
             extracted_data.pinned = true;
 	}
-        extracted_collection.set(message.id, extracted_data);
 
-	if (!participants.has(message.author.tag)) {
-	    let participant = {
-		id: message.author.id,
-                tag: message.author.tag,
-	        pfp: message.author.displayAvatarURL({dynamic: true})
-	    };
-	    participants.set(message.author.tag, participant);
+	if (args.includes('reactions')) {
+            extracted_data.reactions = [await get_reaction_data(message, participants)];
 	}
-    });
+
+	extracted_collection.set(message.id, extracted_data);
+	update_user_collection(participants, message.author);
+    }
 
     return [extracted_collection, participants];
 }
 
+// Takes a Message
+// Also takes in a Collection of participants to update
+// in case a new participant is found.
+// Extracts reaction data and returns an object containing
+// Each reaction and the users that reacted with it
+async function get_reaction_data(message, participants) {
+    let reaction_data = {};
+    let reactions = message.reactions.cache;
+
+    for (const [emoji_string, reaction] of reactions) {
+        reaction_data[reaction._emoji.name] = await get_reactors(reaction.users, participants);
+    }
+
+    return reaction_data;
+}
+
+// Takes a ReactionUserManager
+// Also takes in a Collection of Participants
+// Returns an array contaning the tag of each user who
+// interacted with the reaction. Currently only a max of 100
+// users are gathered. No more than that will be captured
+async function get_reactors(reaction_manager, participants) {
+    let user_data = [];
+    let users = await reaction_manager.fetch();
+    users.each((user) => {
+        user_data.push(user.tag);
+	update_user_collection(participants, user);
+    });
+    return user_data;
+}
+
+// Takes a Collection of participants and a User
+// Checks to see if the User is in the participants collection
+// and adds them to it if they aren't
+// MODIFIES THE REFERENCED COLLECTION
+function update_user_collection(participant_collection, user) {
+    if (!participant_collection.has(user.tag)) {
+        let participant = {
+            id: user.id,
+            tag: user.tag,
+	    pfp: user.displayAvatarURL({dynamic: true})
+	};
+	participant_collection.set(user.tag, participant);
+    }
+}
+
 // Get all the messages from a channel of type TextChannel
 // Returns all the channel messages as <Collection> (snowflake, message)
-// Messages are from newest to oldest.
+// Messages are from newest to oldest
 async function get_channel_messages(channel) {
     // Discord.js only allows fetching a max of 100 messages each time
     let fetch_options = {limit: 100};
@@ -175,7 +219,7 @@ async function get_channel_messages(channel) {
 
 // args is a javascript array and channel is a TextChannel
 // if anything goes wrong the user is sent a message in the
-// TextChannel and stops the command execution. Returns bool.
+// TextChannel and stops the command execution. Returns bool
 function is_valid_command(args, channel) {
     if (args.length === 0) {
         channel.send('No argument provided.');
