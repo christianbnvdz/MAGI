@@ -32,7 +32,7 @@ module.exports = {
 		    message.channel.send('complete not implemented');
 		    //args = ['text', 'reactions', 'stickers', 'attachments'];
 		    //archived_data = await get_data(message.channel, args);
-		    out_file = 'complete_archive;
+		    out_file = 'complete_archive';
 		    return;
 		case 'text':
 	            archived_data = await get_data(message.channel, args);
@@ -65,19 +65,24 @@ module.exports = {
 // Decides how to prepare data in a channel based on the args
 // array given. Returns an object holding all the data.
 async function get_data(channel, args) {
-    let data = {metadata: get_metadata(channel)};
-    let messages = await get_channel_messages(channel);
-    let [message_data, participants] = get_message_data(messages);
+    let data;
 
-    data.participant_data = {
-        participant_count: participants.size,
-	participants: participants
-    };
-    
-    data.message_data = {
-        message_count: message_data.size,
-	messages: message_data
-    };
+    let messages = await get_channel_messages(channel);
+    let [message_data, participants] = get_message_data(messages, args);
+
+    if (args.includes('messages-only')) {
+        data = message_data;
+    } else {
+        data = {metadata: get_metadata(channel)};
+	data.participant_data = {
+            participant_count: participants.size,
+	    participants: participants
+	};
+	data.message_data = {
+            message_count: message_data.size,
+	    messages: message_data
+	};
+    }
 
     return data;
 }
@@ -114,13 +119,13 @@ async function send_JSON_file(channel, filename, archive_obj) {
     });
 }
 
-// Takes a <Collection> (snowflake, message) as input
+// Takes a <Collection> (snowflake, message) and args as input
 // Extracts only desired information from each message in the collection
 // Also extracts info about all those who have ever sent a message
 // Returns a new <Collection> (snowflake, object), the original is not modified
 // and a new <Collection> (user snowflake, participant object) as
 // [extracted messages collection, participant collection]
-function get_message_data(message_collection) {
+function get_message_data(message_collection, args) {
     let extracted_collection = new Discord.Collection();
     let participants = new Discord.Collection();
 
