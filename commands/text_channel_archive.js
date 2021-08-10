@@ -6,8 +6,13 @@ module.exports = {
 	usage: 'Usage: ' + process.env.PREFIX + 
 	       'archive ((help | metadata | participants | complete) | (text (reactions | stickers | attachments)* | whole-messages) messages-only?)',
 	recognized_arguments: ['help', 'metadata', 'participants', 'complete', 'text', 'reactions', 'stickers', 'attachments', 'whole-messages', 'messages-only'],
-	description: 'Creates a .json representation of what you choose to archive and uploads it to the same channel that the command was executed in.\n\nArguments:\n\nmetadata - only captures guild and channel information.\nparticipants - only captures information about who has ever participated in the channel.\ncomplete - will capture metadata, participants, and message content, reactions, stickers, and attachments.\nhelp - will send the usage and this message to the channel.\n\nOnly one of these arguments can be chosen with no other arguments accompanying it. If none of those arguments were used then you can choose how much you want to archive by specifying:\n\ntext - will capture only the textual content for each message. Follow up with "reactions", "stickers", and/or "attachments" to choose what else to capture.\nwhole-messages - will capture textual content, reactions, stickers, and attachments for each message.\nmessages-only - used to ignore metadata and participants since they are captured by default.\n\nPlease note that I plan on implementing stickers capture but I do not have nitro to test it out.',
+	description: 'Creates a .json representation of what you choose to archive and uploads it to the same channel that the command was executed in.\n\nArguments:\n\nmetadata - only captures guild and channel information.\nparticipants - only captures information about who has ever participated in the channel.\ncomplete - will capture metadata, participants, and message content, reactions, stickers, and attachments.\nhelp - will send the usage and this message to the channel.\n\nOnly one of these arguments can be chosen with no other arguments accompanying it. If none of those arguments were used then you can choose how much you want to archive by specifying:\n\ntext - will capture only the textual content for each message. Follow up with "reactions", "stickers", and/or "attachments" to choose what else to capture.\nwhole-messages - will capture textual content, reactions, stickers, and attachments for each message.\nmessages-only - used to ignore metadata and participants since they are captured by default.\n\nOnly the guild owner can execute this command.\n\nPlease note that I plan on implementing stickers capture but I do not have nitro to test it out.',
 	async execute(message, args) {
+	    if (message.guild.ownerID !== message.author.id) {
+                message.channel.send('Only the guild owner can execute this command.');
+	        return;
+	    }
+
 	    if (!is_valid_command(args, message.channel)) {return;}
 
             if (args[0] === 'help') {
@@ -53,12 +58,12 @@ module.exports = {
 	        default:
 	            console.log('none of the above dispatch');
 	    }
-
+            console.log(archived_data);
 	    out_file += '_' + invoked_time + '.json';
 
             // This is an async function but it doesn't matter to us how
 	    // long it takes to get there. Nothing here depends on it.
-	    send_JSON_file(message.channel, out_file, archived_data);
+	    //send_JSON_file(message.channel, out_file, archived_data);
 	}
 };
 
@@ -145,6 +150,9 @@ async function get_message_data(message_collection, args) {
 	if (message.pinned) {
             extracted_data.pinned = true;
 	}
+	if (message.reference !== null) {
+            extracted_data.replying_to = message.reference.messageID;
+	}
 
 	if (args.includes('reactions')) {
             extracted_data.reactions = [await get_reaction_data(message, participants)];
@@ -173,6 +181,7 @@ function get_attachments(message) {
         let attachment = attachment_collection.first();
 	attachment_data = {
             id: attachment.id,
+            spoiler: attachment.spoiler,
 	    name: attachment.name,
 	    url: attachment.url,
 	    size: attachment.size
