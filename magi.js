@@ -24,7 +24,16 @@ client.on('message', message => {
 
     if (!client.commands.has(command)) return;
 
-    client.commands.get(command).execute(message, args);
+    const command_obj = client.commands.get(command);
+    for (const arg of args) {
+        if (!command_obj.recognized_arguments.includes(arg)) {
+            message.channel.send('Unrecognized argument ' + arg);
+	    message.channel.send(command_obj.usage);
+	    return;
+	}
+    }
+
+    command_obj.execute(message, args);
 });
 
 client.login(process.env.TOKEN);
