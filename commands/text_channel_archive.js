@@ -18,6 +18,7 @@ module.exports = {
 
             let archived_data = {};
 	    let out_file = '';
+	    const invoked_time = (new Date()).toISOString();
 
 	    switch (args[0]) {
 		case 'metadata':
@@ -31,31 +32,29 @@ module.exports = {
 	            out_file = 'participants';
 		    break;
 	        case 'complete':
-		    message.channel.send('complete not implemented');
-		    //args = ['text', 'reactions', 'stickers', 'attachments'];
-		    //archived_data = await get_data(message.channel, args);
+		    args = ['text', 'reactions', 'stickers', 'attachments'];
+		    archived_data = await get_data(message.channel, args);
 		    out_file = 'complete_archive';
-		    return;
+		    break;
 		case 'text':
 	            archived_data = await get_data(message.channel, args);
 		    out_file = 'channel_archive';
 	            break;
 		case 'whole-messages':
-		    message.channel.send('whole-messages not implemented');
-		    //let only_message_data = false;
-		    //if (args.length === 2) {only_message_data = true;}
-		    //args = ['text', 'reactions', 'stickers', 'attachments'];
-		    //if (only_message_data) {
-		    //    args.push('messages-only');
-		    //}
-		    //archived_data = await get_data(message.channel, args);
+		    let only_message_data = false;
+		    if (args.length === 2) {only_message_data = true;}
+		    args = ['text', 'reactions', 'stickers', 'attachments'];
+		    if (only_message_data) {
+		        args.push('messages-only');
+		    }
+		    archived_data = await get_data(message.channel, args);
 	            out_file = 'channel_archive';
-	            return;
+	            break;
 	        default:
 	            console.log('none of the above dispatch');
 	    }
 
-	    out_file += '_' + (new Date()).toISOString() + '.json';
+	    out_file += '_' + invoked_time + '.json';
 
             // This is an async function but it doesn't matter to us how
 	    // long it takes to get there. Nothing here depends on it.
