@@ -151,11 +151,36 @@ async function get_message_data(message_collection, args) {
             extracted_data.reactions = [await get_reaction_data(message, participants)];
 	}
 
+	if (args.includes('attachments')) {
+	    extracted_data.attachments = [get_attachments(message)];
+	}
+
 	extracted_collection.set(message.id, extracted_data);
 	update_user_collection(participants, message.author);
     }
 
     return [extracted_collection, participants];
+}
+
+// Takes a Message
+// Extracts the attachments from a message and returns an
+// object containing the url, the name, and the size of the
+// attachment
+function get_attachments(message) {
+    let attachment_data = {};
+    let attachment_collection = message.attachments;
+    if (attachment_collection.size > 0) {
+        // It appears that there is only ever one attachment per message
+        let attachment = attachment_collection.first();
+	attachment_data = {
+            id: attachment.id,
+	    name: attachment.name,
+	    url: attachment.url,
+	    size: attachment.size
+	};
+    }
+
+    return attachment_data;
 }
 
 // Takes a Message
