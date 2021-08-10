@@ -164,6 +164,9 @@ async function get_message_data(message_collection, args) {
 
 	extracted_collection.set(message.id, extracted_data);
 	update_user_collection(participants, message.author);
+	if (message.type === 'GUILD_MEMBER_JOIN') {
+            participants.get(message.author.tag).joined = message.createdAt;
+	}
     }
 
     return [extracted_collection, participants];
