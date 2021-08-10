@@ -58,12 +58,12 @@ module.exports = {
 	        default:
 	            console.log('none of the above dispatch');
 	    }
-            console.log(archived_data);
+
 	    out_file += '_' + invoked_time + '.json';
 
             // This is an async function but it doesn't matter to us how
 	    // long it takes to get there. Nothing here depends on it.
-	    //send_JSON_file(message.channel, out_file, archived_data);
+	    send_JSON_file(message.channel, out_file, archived_data);
 	}
 };
 
