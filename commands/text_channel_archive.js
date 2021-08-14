@@ -8,7 +8,7 @@ module.exports = {
 	recognized_arguments: ['help', 'metadata', 'participants', 'complete', 'text', 'reactions', 'stickers', 'attachments', 'whole-messages', 'messages-only'],
 	description: 'Creates a .json representation of what you choose to archive and uploads it to the same channel that the command was executed in.\n\nArguments:\n\nmetadata - only captures guild and channel information.\nparticipants - only captures information about who has ever participated in the channel.\ncomplete - will capture metadata, participants, and message content, reactions, stickers, and attachments.\nhelp - will send the usage and this message to the channel.\n\nOnly one of these arguments can be chosen with no other arguments accompanying it. If none of those arguments were used then you can choose how much you want to archive by specifying:\n\ntext - will capture only the textual content for each message. Follow up with "reactions", "stickers", and/or "attachments" to choose what else to capture.\nwhole-messages - will capture textual content, reactions, stickers, and attachments for each message.\nmessages-only - used to ignore metadata and participants since they are captured by default.\n\nOnly the guild owner can execute this command.\n\nPlease note that I plan on implementing stickers capture but I do not have nitro to test it out.',
 	async execute(message, args) {
-	    if (message.guild.ownerID !== message.author.id) {
+	    if (message.guild.ownerId !== message.author.id) {
                 message.channel.send('Only the guild owner can execute this command.');
 	        return;
 	    }
@@ -23,6 +23,7 @@ module.exports = {
 
             let archived_data = {};
 	    let out_file = '';
+
 	    const invoked_time = (new Date()).toISOString();
 
 	    switch (args[0]) {
@@ -105,7 +106,7 @@ function get_metadata(channel) {
 	guild_name: channel.guild.name,
 	guild_description: channel.guild.description,
 	guild_creation_date: channel.guild.createdAt,
-	guild_owner_id: channel.guild.ownerID,
+	guild_owner_id: channel.guild.ownerId,
 	channel_id: channel.id,
 	channel_name: channel.name,
 	channel_topic: channel.topic,
@@ -151,7 +152,7 @@ async function get_message_data(message_collection, args) {
             extracted_data.pinned = true;
 	}
 	if (message.reference !== null) {
-            extracted_data.replying_to = message.reference.messageID;
+            extracted_data.replying_to = message.reference.messageId;
 	}
 
 	if (args.includes('reactions')) {
@@ -204,7 +205,7 @@ async function get_reaction_data(message, participants) {
     let reactions = message.reactions.cache;
 
     for (const [emoji_string, reaction] of reactions) {
-        reaction_data[reaction._emoji.name] = await get_reactors(reaction.users, participants);
+        reaction_data[reaction.emoji.name] = await get_reactors(reaction.users, participants);
     }
 
     return reaction_data;
