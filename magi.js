@@ -17,10 +17,8 @@ for (const file of commandFiles) {
 client.on('messageCreate', message => {
     if (!message.content.startsWith(process.env.PREFIX) || message.author.bot) return;
 
-    let args = message.content.slice(process.env.PREFIX.length).trim().split(/\s+/);
-    for (let i = 0; i < args.length; ++i) {
-        args[i] = args[i].toLowerCase();
-    }
+    let args = message.content.toLowerCase()
+	              .slice(process.env.PREFIX.length).trim().split(/\s+/);
     const command = args.shift();
 
     if (!client.commands.has(command)) return;
