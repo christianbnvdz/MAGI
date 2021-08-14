@@ -3,24 +3,25 @@ dotenv.config();
 
 const fs = require('fs');
 const Discord = require('discord.js');
-const client = new Discord.Client();
-client.commands = new Discord.Collection();
 
+const intents = [Discord.Intents.FLAGS.GUILDS, Discord.Intents.FLAGS.GUILD_MESSAGES];
+const client = new Discord.Client({intents: intents});
+
+client.commands = new Discord.Collection();
 const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
 for (const file of commandFiles) {
     const command = require(`./commands/${file}`);
     client.commands.set(command.name, command);
 }
 
-client.once('ready', () => {
-    //client.channels.cache.get('746086612697350228').send('Hello, I am back.');
-});
-
-client.on('message', message => {
+client.on('messageCreate', message => {
     if (!message.content.startsWith(process.env.PREFIX) || message.author.bot) return;
 
-    const args = message.content.slice(process.env.PREFIX.length).trim().split(/\s+/);
-    const command = args.shift().toLowerCase();
+    let args = message.content.slice(process.env.PREFIX.length).trim().split(/\s+/);
+    for (let i = 0; i < args.length; ++i) {
+        args[i] = args[i].toLowerCase();
+    }
+    const command = args.shift();
 
     if (!client.commands.has(command)) return;
 
