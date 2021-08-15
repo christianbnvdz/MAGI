@@ -4,9 +4,9 @@ const fs = require('fs');
 module.exports = {
 	name: 'archive',
 	usage: 'Usage: ' + process.env.PREFIX + 
-	       'archive ((help | metadata | participants | complete) | (text (reactions | stickers | attachments)* | whole-messages) messages-only?)',
-	recognized_arguments: ['help', 'metadata', 'participants', 'complete', 'text', 'reactions', 'stickers', 'attachments', 'whole-messages', 'messages-only'],
-	description: 'Creates a .json representation of what you choose to archive and uploads it to the same channel that the command was executed in.\n\nArguments:\n\nmetadata - only captures guild and channel information.\nparticipants - only captures information about who has ever participated in the channel.\ncomplete - will capture metadata, participants, and message content, reactions, stickers, and attachments.\nhelp - will send the usage and this message to the channel.\n\nOnly one of these arguments can be chosen with no other arguments accompanying it. If none of those arguments were used then you can choose how much you want to archive by specifying:\n\ntext - will capture only the textual content for each message. Follow up with "reactions", "stickers", and/or "attachments" to choose what else to capture.\nwhole-messages - will capture textual content, reactions, stickers, and attachments for each message.\nmessages-only - used to ignore metadata and participants since they are captured by default.\n\nOnly the guild owner can execute this command.\n\nPlease note that I plan on implementing stickers capture but I do not have nitro to test it out.',
+	       'archive ((help | metadata | participants | complete) | (text (reactions | stickers | attachments | threads)* | whole-messages) messages-only?)',
+	recognized_arguments: ['help', 'metadata', 'participants', 'complete', 'text', 'reactions', 'stickers', 'attachments', 'threads', 'whole-messages', 'messages-only'],
+	description: 'Creates a .json representation of what you choose to archive and uploads it to the same channel that the command was executed in.\n\nArguments:\n\nmetadata - only captures guild and channel information.\nparticipants - only captures information about who has ever participated in the channel.\ncomplete - will capture metadata, participants, and message content, reactions, stickers, and attachments.\nhelp - will send the usage and this message to the channel.\n\nOnly one of these arguments can be chosen with no other arguments accompanying it. If none of those arguments were used then you can choose how much you want to archive by specifying:\n\ntext - will capture only the textual content for each message. Follow up with "reactions", "stickers", "attachments", and/or "threads" to choose what else to capture.\nwhole-messages - will capture textual content, reactions, stickers, and attachments for each message.\nmessages-only - used to ignore metadata and participants since they are captured by default.\n\nOnly the guild owner can execute this command.\n\nPlease note that I plan on implementing stickers capture but I do not have nitro to test it out.',
 	async execute(message, args) {
 	    if (message.guild.ownerId !== message.author.id) {
                 message.channel.send('Only the guild owner can execute this command.');
@@ -38,7 +38,7 @@ module.exports = {
 	            out_file = 'participants';
 		    break;
 	        case 'complete':
-		    args = ['text', 'reactions', 'stickers', 'attachments'];
+		    args = ['text', 'reactions', 'stickers', 'attachments', 'threads'];
 		    archived_data = await get_data(message.channel, args);
 		    out_file = 'complete_archive';
 		    break;
@@ -49,7 +49,7 @@ module.exports = {
 		case 'whole-messages':
 		    let only_message_data = false;
 		    if (args.length === 2) {only_message_data = true;}
-		    args = ['text', 'reactions', 'stickers', 'attachments'];
+		    args = ['text', 'reactions', 'stickers', 'attachments', 'threads'];
 		    if (only_message_data) {
 		        args.push('messages-only');
 		    }
@@ -134,7 +134,7 @@ async function send_JSON_file(channel, filename, archive_obj) {
 // Extracts only desired information from each message in the collection
 // Also extracts info about all those who have ever sent a message
 // Returns a new <Collection> (snowflake, object), the original is not modified
-// and a new <Collection> (user snowflake, participant object) as
+// and a new <Collection> (user tag, participant object) as
 // [extracted messages collection, participant collection]
 async function get_message_data(message_collection, args) {
     let extracted_collection = new Discord.Collection();
@@ -148,11 +148,18 @@ async function get_message_data(message_collection, args) {
 	    time: message.createdAt,
 	    text: message.content
 	};
+
 	if (message.pinned) {
             extracted_data.pinned = true;
 	}
-	if (message.reference !== null) {
+	if (message.type === 'REPLY') {
             extracted_data.replying_to = message.reference.messageId;
+	}
+	// Only true if it's a message in a thread
+	if (message.channel.type === 'GUILD_NEWS_THREAD' ||
+	    message.channel.type === 'GUILD_PUBLIC_THREAD' ||
+	    message.channel.type === 'GUILD_PRIVATE_THREAD') {
+            extracted_data.thread_id = message.channelId;
 	}
 
 	if (args.includes('reactions')) {
@@ -168,8 +175,23 @@ async function get_message_data(message_collection, args) {
 	if (message.type === 'GUILD_MEMBER_JOIN') {
             participants.get(message.author.tag).joined = message.createdAt;
 	}
-    }
 
+	// This will never be true for messages that are in threads
+	if (args.includes('threads') && message.hasThread) {
+	    extracted_data.spawned_thread = true;
+	    extracted_data.thread_id = message.thread.id;
+            const thread_messages = await get_channel_messages(message.thread);
+	    const [messages, thread_participants] = await get_message_data(thread_messages, args);
+            // join messages and participants
+	    extracted_collection = extracted_collection.concat(messages);
+	    for (const [tag, participant_info] of thread_participants) {
+                if (!participants.has(tag)) {
+                    participants.set(tag, participant_info);
+		}
+	    }
+	}
+
+    }
     return [extracted_collection, participants];
 }
 
