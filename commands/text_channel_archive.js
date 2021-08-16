@@ -105,6 +105,7 @@ function get_metadata(channel) {
         guild_id: channel.guild.id,
 	guild_name: channel.guild.name,
 	guild_description: channel.guild.description,
+	guild_icon: channel.guild.iconURL({dynamic: true}),
 	guild_creation_date: channel.guild.createdAt,
 	guild_owner_id: channel.guild.ownerId,
 	channel_id: channel.id,
@@ -153,6 +154,7 @@ async function get_message_data(message_collection, args) {
             extracted_data.pinned = true;
 	}
 	if (message.type === 'REPLY') {
+	    // Even if the message was deleted the snowflake is still there
             extracted_data.replying_to = message.reference.messageId;
 	}
 	// Only true if it's a message in a thread
@@ -167,7 +169,7 @@ async function get_message_data(message_collection, args) {
 	}
 
 	if (args.includes('attachments')) {
-	    extracted_data.attachments = [get_attachments(message)];
+	    extracted_data.attachments = get_attachments(message);
 	}
 
 	extracted_collection.set(message.id, extracted_data);
@@ -197,24 +199,22 @@ async function get_message_data(message_collection, args) {
 
 // Takes a Message
 // Extracts the attachments from a message and returns an
-// object containing the url, the name, and the size of the
-// attachment
+// array of attachment objects that hold info about that attachment
 function get_attachments(message) {
-    let attachment_data = {};
-    let attachment_collection = message.attachments;
-    if (attachment_collection.size > 0) {
-        // It appears that there is only ever one attachment per message
-        let attachment = attachment_collection.first();
-	attachment_data = {
+    let attachments = [];
+    // Mobile users can send multiple attachments per message
+    for (const [snowflake, attachment] of message.attachments) {
+	let attachment_info = {
             id: attachment.id,
             spoiler: attachment.spoiler,
 	    name: attachment.name,
 	    url: attachment.url,
 	    size: attachment.size
 	};
+	attachments.push(attachment_info);
     }
 
-    return attachment_data;
+    return attachments;
 }
 
 // Takes a Message
