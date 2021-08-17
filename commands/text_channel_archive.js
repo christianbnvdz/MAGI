@@ -6,7 +6,7 @@ module.exports = {
 	usage: 'Usage: ' + process.env.PREFIX + 
 	       'archive ((help | metadata | participants | complete) | (text (reactions | stickers | attachments | threads)* | whole-messages) messages-only?)',
 	recognized_arguments: ['help', 'metadata', 'participants', 'complete', 'text', 'reactions', 'stickers', 'attachments', 'threads', 'whole-messages', 'messages-only'],
-	description: 'Creates a .json representation of what you choose to archive and uploads it to the same channel that the command was executed in.\n\nArguments:\n\nmetadata - only captures guild and channel information.\nparticipants - only captures information about who has ever participated in the channel.\ncomplete - will capture metadata, participants, and message content, reactions, stickers, and attachments.\nhelp - will send the usage and this message to the channel.\n\nOnly one of these arguments can be chosen with no other arguments accompanying it. If none of those arguments were used then you can choose how much you want to archive by specifying:\n\ntext - will capture only the textual content for each message. Follow up with "reactions", "stickers", "attachments", and/or "threads" to choose what else to capture.\nwhole-messages - will capture textual content, reactions, stickers, and attachments for each message.\nmessages-only - used to ignore metadata and participants since they are captured by default.\n\nOnly the guild owner can execute this command.\n\nPlease note that I plan on implementing stickers capture but I do not have nitro to test it out.',
+	description: 'Creates a .json representation of what you choose to archive and uploads it to the same channel that the command was executed in.\n\nmetadata - only captures guild and channel information.\nparticipants - only captures information about who has ever participated in the channel.\ncomplete - captures everything (see Capture Selection).\nhelp - will send the usage and this message to the channel.\n\nCapture Selection:\ntext - will capture only the textual content for each message. Follow up with "reactions", "stickers", "attachments", and/or "threads" to choose what else to capture.\nwhole-messages - captures everything.\nmessages-only - used to ignore metadata and participants since they are captured by default.\n\nOnly the guild owner can execute this command.',
 	async execute(message, args) {
 	    if (message.guild.ownerId !== message.author.id) {
                 message.channel.send('Only the guild owner can execute this command.');
@@ -76,10 +76,6 @@ async function get_data(channel, args) {
 
     let messages = await get_channel_messages(channel);
     let [message_data, participants] = await get_message_data(messages, args);
-
-    if (args.includes('stickers')) {
-        channel.send('The stickers argument is not implemented.');
-    }
 
     if (args.includes('messages-only')) {
         data = message_data;
@@ -153,10 +149,12 @@ async function get_message_data(message_collection, args) {
 	if (message.pinned) {
             extracted_data.pinned = true;
 	}
+
 	if (message.type === 'REPLY') {
 	    // Even if the message was deleted the snowflake is still there
             extracted_data.replying_to = message.reference.messageId;
 	}
+
 	// Only true if it's a message in a thread
 	if (message.channel.type === 'GUILD_NEWS_THREAD' ||
 	    message.channel.type === 'GUILD_PUBLIC_THREAD' ||
@@ -166,6 +164,10 @@ async function get_message_data(message_collection, args) {
 
 	if (args.includes('reactions')) {
             extracted_data.reactions = [await get_reaction_data(message, participants)];
+	}
+
+	if (args.includes('stickers')) {
+            extracted_data.stickers = get_stickers(message);
 	}
 
 	if (args.includes('attachments')) {
@@ -192,9 +194,28 @@ async function get_message_data(message_collection, args) {
 		}
 	    }
 	}
-
     }
+
     return [extracted_collection, participants];
+}
+
+// Takes a Message
+// Extracts the stickers from a message and returns an array of
+// sticker objects that hold info about each sticker
+function get_stickers(message) {
+    let stickers = [];
+    // Not sure how a message can have multiple stickers but it may happen
+    for (const [snowflake, sticker] of message.stickers) {
+        let sticker_info = {
+	    id: sticker.id,
+	    name: sticker.name,
+	    url: sticker.url,
+	    creator: sticker.user.tag
+	}
+	stickers.push(sticker_info);
+    }
+
+    return stickers;
 }
 
 // Takes a Message
@@ -241,10 +262,12 @@ async function get_reaction_data(message, participants) {
 async function get_reactors(reaction_manager, participants) {
     let user_data = [];
     let users = await reaction_manager.fetch();
+
     users.each((user) => {
         user_data.push(user.tag);
 	update_user_collection(participants, user);
     });
+
     return user_data;
 }
 
