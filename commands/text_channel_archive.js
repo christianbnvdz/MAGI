@@ -1,5 +1,7 @@
 const Discord = require('discord.js')
 const fs = require('fs');
+const zlib = require('zlib');
+const stream = require('stream');
 
 module.exports = {
 	name: 'archive',
@@ -64,7 +66,7 @@ module.exports = {
 
             // This is an async function but it doesn't matter to us how
 	    // long it takes to get there. Nothing here depends on it.
-	    send_JSON_file(message.channel, out_file, archived_data);
+	    send_archived_file(message.channel, out_file, archived_data);
 	}
 };
 
@@ -117,13 +119,29 @@ function get_metadata(channel) {
 // Takes a string consisting of the filename (including extension)
 // Takes the archive object to send in that file
 // Sends the information in the archive object to the channel
-async function send_JSON_file(channel, filename, archive_obj) {
-    fs.writeFile(filename, JSON.stringify(archive_obj), 'utf8', () => {});
-    await channel.send({
-	files: [{
-	    attachment: `./${filename}`,
-	    name: filename
-	}]
+// after compressing using gzip
+async function send_archived_file(channel, filename, archive_obj) {
+    const gzip = zlib.createGzip();
+    const ext = '.gz'
+
+    fs.writeFileSync(filename, JSON.stringify(archive_obj), 'utf8');
+
+    const source = fs.createReadStream(filename);
+    const destination = fs.createWriteStream(filename + ext);
+
+    stream.pipeline(source, gzip, destination, (err) => {
+        if (err) {
+            console.log('An error occured creating the gzip file.');
+	    console.log(err);
+	    return;
+	}
+
+	channel.send({
+            files: [{
+                attachment: `./${filename + ext}`,
+		name: filename + ext
+	    }]
+	});
     });
 }
 
