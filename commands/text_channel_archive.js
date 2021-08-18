@@ -129,20 +129,24 @@ async function send_archived_file(channel, filename, archive_obj) {
     const source = fs.createReadStream(filename);
     const destination = fs.createWriteStream(filename + ext);
 
-    stream.pipeline(source, gzip, destination, (err) => {
+    stream.pipeline(source, gzip, destination, async (err) => {
         if (err) {
             console.log('An error occured creating the gzip file.');
 	    console.log(err);
 	    return;
 	}
 
-	channel.send({
+	await channel.send({
             files: [{
                 attachment: `./${filename + ext}`,
 		name: filename + ext
 	    }]
 	});
+
+	fs.rmSync(filename);
+	fs.rmSync(filename + ext);
     });
+
 }
 
 // Takes a <Collection> (snowflake, message) and args as input
