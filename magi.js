@@ -1,8 +1,9 @@
 import {config} from 'dotenv';
-config();
-
 import {readdirSync} from 'fs';
 import {Intents, Client, Collection} from 'discord.js';
+
+// setup enviornment variables from .env
+config();
 
 const intents = [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES];
 const client = new Client({intents: intents});
