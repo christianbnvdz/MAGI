@@ -12,15 +12,15 @@ client.commands = new Collection();
 const commandFiles =
     readdirSync('./commands').filter(file => file.endsWith('.js'));
 for (const file of commandFiles) {
-  const command_module = await import(`./commands/${file}`);
-  client.commands.set(command_module.name, command_module);
+  const commandModule = await import(`./commands/${file}`);
+  client.commands.set(commandModule.name, commandModule);
 }
 
 client.on('messageCreate', message => {
   if (!message.content.startsWith(process.env.PREFIX) || message.author.bot)
     return;
 
-  let args = message.content.toLowerCase()
+  const args = message.content.toLowerCase()
                  .slice(process.env.PREFIX.length)
                  .trim()
                  .split(/\s+/);
@@ -28,16 +28,17 @@ client.on('messageCreate', message => {
 
   if (!client.commands.has(command)) return;
 
-  const command_obj = client.commands.get(command);
+  const commandModule = client.commands.get(command);
+
   for (const arg of args) {
-    if (!command_obj.recognized_args.includes(arg)) {
+    if (!commandModule.recognizedArgs.includes(arg)) {
       message.channel.send('Unrecognized argument ' + arg);
-      message.channel.send(command_obj.usage);
+      message.channel.send(commandModule.usage);
       return;
     }
   }
 
-  command_obj.execute(message, args);
+  commandModule.execute(message, args);
 });
 
 client.login(process.env.TOKEN);
