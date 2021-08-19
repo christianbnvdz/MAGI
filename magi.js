@@ -1,3 +1,4 @@
+import process from 'process';
 import {Client, Collection, Intents} from 'discord.js';
 import {config} from 'dotenv';
 import {readdirSync} from 'fs';
@@ -14,7 +15,7 @@ const commandFiles =
     readdirSync('./commands').filter(file => file.endsWith('.js'));
 for (const file of commandFiles) {
   const commandModule = await import(`./commands/${file}`);
-  client.commands.set(commandModule.name, commandModule);
+  client.commands.set(commandModule.NAME, commandModule);
 }
 
 client.on('messageCreate', message => {
@@ -32,9 +33,9 @@ client.on('messageCreate', message => {
   const commandModule = client.commands.get(command);
 
   for (const arg of args) {
-    if (!commandModule.recognizedArgs.includes(arg)) {
+    if (!commandModule.RECOGNIZED_ARGS.includes(arg)) {
       message.channel.send(
-          `Unrecognized argument: ${arg}\n${commandModule.usage}`);
+          `Unrecognized argument: ${arg}\n${commandModule.USAGE}`);
       return;
     }
   }
