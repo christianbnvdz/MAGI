@@ -22,9 +22,9 @@ client.on('messageCreate', message => {
     return;
 
   const args = message.content.toLowerCase()
-                 .slice(process.env.PREFIX.length)
-                 .trim()
-                 .split(/\s+/);
+                   .slice(process.env.PREFIX.length)
+                   .trim()
+                   .split(/\s+/);
   const command = args.shift();
 
   if (!client.commands.has(command)) return;
@@ -33,8 +33,8 @@ client.on('messageCreate', message => {
 
   for (const arg of args) {
     if (!commandModule.recognizedArgs.includes(arg)) {
-      message.channel.send('Unrecognized argument ' + arg);
-      message.channel.send(commandModule.usage);
+      message.channel.send(
+          `Unrecognized argument: ${arg}\n${commandModule.usage}`);
       return;
     }
   }
