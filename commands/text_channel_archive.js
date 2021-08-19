@@ -1,31 +1,27 @@
+import process from 'process';
 import {Collection} from 'discord.js';
 import {createReadStream, createWriteStream, rmSync, writeFileSync} from 'fs';
 import {pipeline} from 'stream';
 import {createGzip} from 'zlib';
 
-const command = {
-  name: 'archive',
-  usage: 'Usage: ' + process.env.PREFIX +
-      'archive ((help | metadata | participants | complete) | (text (reactions | stickers | attachments | threads)* | whole-messages) messages-only?)',
-  recognized_args: [
-    'help', 'metadata', 'participants', 'complete', 'text', 'reactions',
-    'stickers', 'attachments', 'threads', 'whole-messages', 'messages-only'
-  ],
-  description:
-      'Creates a .json representation of what you choose to archive and uploads it to the same channel that the command was executed in.\n\nmetadata - only captures guild and channel information.\nparticipants - only captures information about who has ever participated in the channel.\ncomplete - captures everything (see Capture Selection).\nhelp - will send the usage and this message to the channel.\n\nCapture Selection:\ntext - will capture only the textual content for each message. Follow up with "reactions", "stickers", "attachments", and/or "threads" to choose what else to capture.\nwhole-messages - captures everything.\nmessages-only - used to ignore metadata and participants since they are captured by default.\n\nOnly the guild owner can execute this command.',
-  async execute(message, args) {
+const NAME = 'archive';
+const USAGE = `Usage: ${process.env.PREFIX}archive ((help | metadata | participants | complete) | (text (reactions | stickers | attachments | threads)* | whole-messages) messages-only?)`;
+const RECOGNIZED_ARGS = [
+      'help', 'metadata', 'participants', 'complete', 'text', 'reactions',
+      'stickers', 'attachments', 'threads', 'whole-messages', 'messages-only'
+    ];
+const DESCRIPTION = 'Creates a .json representation of what you choose to archive and uploads it to the same channel that the command was executed in.\n\nmetadata - only captures guild and channel information.\nparticipants - only captures information about who has ever participated in the channel.\ncomplete - captures everything (see Capture Selection).\nhelp - will send the usage and this message to the channel.\n\nCapture Selection:\ntext - will capture only the textual content for each message. Follow up with "reactions", "stickers", "attachments", and/or "threads" to choose what else to capture.\nwhole-messages - captures everything.\nmessages-only - used to ignore metadata and participants since they are captured by default.\n\nOnly the guild owner can execute this command.';
+
+async function execute(message, args) {
     if (message.guild.ownerId !== message.author.id) {
       message.channel.send('Only the guild owner can execute this command.');
       return;
     }
 
-    if (!is_valid_command(args, message.channel)) {
-      return;
-    }
+    if (!is_valid_command(args, message.channel)) return;
 
     if (args[0] === 'help') {
-      message.channel.send(this.usage);
-      message.channel.send(this.description);
+      message.channel.send(`${USAGE}\n${DESCRIPTION}`);
       return;
     };
 
@@ -75,10 +71,9 @@ const command = {
     // This is an async function but it doesn't matter to us how
     // long it takes to get there. Nothing here depends on it.
     send_archived_file(message.channel, out_file, archived_data);
-  }
-};
+}
 
-export const {name, usage, recognized_args, description, execute} = command;
+export {NAME, USAGE, RECOGNIZED_ARGS, DESCRIPTION, execute};
 
 // Takes a TextChannel and an argument array
 // Decides how to prepare data in a channel based on the args
@@ -240,7 +235,8 @@ function get_stickers(message) {
       name: sticker.name,
       url: sticker.url,
       creator: sticker.user.tag
-    } stickers.push(sticker_info);
+    }
+    stickers.push(sticker_info);
   }
 
   return stickers;
@@ -340,7 +336,7 @@ async function get_channel_messages(channel) {
 function is_valid_command(args, channel) {
   if (args.length === 0) {
     channel.send('No argument provided.');
-    channel.send(command_obj.usage);
+    channel.send(USAGE);
     return false;
   }
 
@@ -349,7 +345,7 @@ function is_valid_command(args, channel) {
     if (args.length !== 1) {
       channel.send(
           'Arguments "help", "metadata", "participants", and "complete" can\'t be accompanied by other arguments.');
-      channel.send(command_obj.usage);
+      channel.send(USAGE);
       return false;
     } else {
       return true;
@@ -359,17 +355,17 @@ function is_valid_command(args, channel) {
   if (args[0] !== 'text' && args[0] !== 'whole-messages') {
     channel.send(
         '"text" or "whole-messages" must be specified before other arguments.');
-    channel.send(command_obj.usage);
+    channel.send(USAGE);
     return false;
   } else if (args[0] === 'whole-messages') {
     if (args.length > 2) {
       channel.send('Too many arguments for "whole-messages".');
-      channel.send(command_obj.usage);
+      channel.send(USAGE);
       return false;
     } else if (args.length === 2 && args[1] !== 'messages-only') {
       channel.send(
           '"messages-only" is the only argument that can come after "whole-messages".');
-      channel.send(command_obj.usage);
+      channel.send(USAGE);
       return false;
     }
     return true;
