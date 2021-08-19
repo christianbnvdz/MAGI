@@ -1,17 +1,17 @@
-const dotenv = require('dotenv');
-dotenv.config();
+import {config} from 'dotenv';
+config();
 
-const fs = require('fs');
-const Discord = require('discord.js');
+import {readdirSync} from 'fs';
+import {Intents, Client, Collection} from 'discord.js';
 
-const intents = [Discord.Intents.FLAGS.GUILDS, Discord.Intents.FLAGS.GUILD_MESSAGES];
-const client = new Discord.Client({intents: intents});
+const intents = [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES];
+const client = new Client({intents: intents});
 
-client.commands = new Discord.Collection();
-const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
+client.commands = new Collection();
+const commandFiles = readdirSync('./commands').filter(file => file.endsWith('.js'));
 for (const file of commandFiles) {
-    const command = require(`./commands/${file}`);
-    client.commands.set(command.name, command);
+    const command_module = await import(`./commands/${file}`);
+    client.commands.set(command_module.name, command_module);
 }
 
 client.on('messageCreate', message => {
@@ -25,7 +25,7 @@ client.on('messageCreate', message => {
 
     const command_obj = client.commands.get(command);
     for (const arg of args) {
-        if (!command_obj.recognized_arguments.includes(arg)) {
+        if (!command_obj.recognized_args.includes(arg)) {
             message.channel.send('Unrecognized argument ' + arg);
 	    message.channel.send(command_obj.usage);
 	    return;

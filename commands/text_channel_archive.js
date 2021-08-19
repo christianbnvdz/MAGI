@@ -1,13 +1,13 @@
-const Discord = require('discord.js')
-const fs = require('fs');
-const zlib = require('zlib');
-const stream = require('stream');
+import {Collection} from 'discord.js';
+import {writeFileSync, createReadStream, createWriteStream, rmSync} from 'fs';
+import {createGzip} from 'zlib';
+import {pipeline} from 'stream';
 
-module.exports = {
+const command = {
 	name: 'archive',
 	usage: 'Usage: ' + process.env.PREFIX + 
 	       'archive ((help | metadata | participants | complete) | (text (reactions | stickers | attachments | threads)* | whole-messages) messages-only?)',
-	recognized_arguments: ['help', 'metadata', 'participants', 'complete', 'text', 'reactions', 'stickers', 'attachments', 'threads', 'whole-messages', 'messages-only'],
+	recognized_args: ['help', 'metadata', 'participants', 'complete', 'text', 'reactions', 'stickers', 'attachments', 'threads', 'whole-messages', 'messages-only'],
 	description: 'Creates a .json representation of what you choose to archive and uploads it to the same channel that the command was executed in.\n\nmetadata - only captures guild and channel information.\nparticipants - only captures information about who has ever participated in the channel.\ncomplete - captures everything (see Capture Selection).\nhelp - will send the usage and this message to the channel.\n\nCapture Selection:\ntext - will capture only the textual content for each message. Follow up with "reactions", "stickers", "attachments", and/or "threads" to choose what else to capture.\nwhole-messages - captures everything.\nmessages-only - used to ignore metadata and participants since they are captured by default.\n\nOnly the guild owner can execute this command.',
 	async execute(message, args) {
 	    if (message.guild.ownerId !== message.author.id) {
@@ -70,6 +70,8 @@ module.exports = {
 	}
 };
 
+export const {name, usage, recognized_args, description, execute} = command;
+
 // Takes a TextChannel and an argument array
 // Decides how to prepare data in a channel based on the args
 // array given. Returns an object holding all the data.
@@ -121,15 +123,15 @@ function get_metadata(channel) {
 // Sends the information in the archive object to the channel
 // after compressing using gzip
 async function send_archived_file(channel, filename, archive_obj) {
-    const gzip = zlib.createGzip();
+    const gzip = createGzip();
     const ext = '.gz'
 
-    fs.writeFileSync(filename, JSON.stringify(archive_obj), 'utf8');
+    writeFileSync(filename, JSON.stringify(archive_obj), 'utf8');
 
-    const source = fs.createReadStream(filename);
-    const destination = fs.createWriteStream(filename + ext);
+    const source = createReadStream(filename);
+    const destination = createWriteStream(filename + ext);
 
-    stream.pipeline(source, gzip, destination, async (err) => {
+    pipeline(source, gzip, destination, async (err) => {
         if (err) {
             console.log('An error occured creating the gzip file.');
 	    console.log(err);
@@ -143,8 +145,8 @@ async function send_archived_file(channel, filename, archive_obj) {
 	    }]
 	});
 
-	fs.rmSync(filename);
-	fs.rmSync(filename + ext);
+	rmSync(filename);
+	rmSync(filename + ext);
     });
 
 }
@@ -156,8 +158,8 @@ async function send_archived_file(channel, filename, archive_obj) {
 // and a new <Collection> (user tag, participant object) as
 // [extracted messages collection, participant collection]
 async function get_message_data(message_collection, args) {
-    let extracted_collection = new Discord.Collection();
-    let participants = new Discord.Collection();
+    let extracted_collection = new Collection();
+    let participants = new Collection();
 
     for (const [snowflake, message] of message_collection) {
         //Basic message_data
@@ -333,7 +335,7 @@ async function get_channel_messages(channel) {
 function is_valid_command(args, channel) {
     if (args.length === 0) {
         channel.send('No argument provided.');
-	channel.send(module.exports.usage);
+	channel.send(command_obj.usage);
         return false;
     }
 
@@ -341,7 +343,7 @@ function is_valid_command(args, channel) {
 	args.includes('participants') || args.includes('complete')) {
 	if (args.length !== 1) {
 	    channel.send('Arguments "help", "metadata", "participants", and "complete" can\'t be accompanied by other arguments.');
-	    channel.send(module.exports.usage);
+	    channel.send(command_obj.usage);
             return false;
 	} else {
             return true;
@@ -350,16 +352,16 @@ function is_valid_command(args, channel) {
 
     if (args[0] !== 'text' && args[0] !== 'whole-messages') {
         channel.send('"text" or "whole-messages" must be specified before other arguments.');
-	channel.send(module.exports.usage);
+	channel.send(command_obj.usage);
 	return false;
     } else if (args[0] === 'whole-messages') {
         if (args.length > 2) {
             channel.send('Too many arguments for "whole-messages".');
-	    channel.send(module.exports.usage);
+	    channel.send(command_obj.usage);
             return false;
 	} else if (args.length === 2 && args[1] !== 'messages-only') {
 	    channel.send('"messages-only" is the only argument that can come after "whole-messages".');
-	    channel.send(module.exports.usage);
+	    channel.send(command_obj.usage);
             return false;
 	}
 	return true;
