@@ -25,10 +25,20 @@ async function execute(message, args) {
       return;
     };
 
+    const invokedTime = (new Date()).toISOString();
+    const [archivedData, filename] = await getArchiveData(message, args);
+
+    sendArchivedFile(message.channel, `${filename}_${invokedTime}.json`, archivedData);
+}
+
+export {NAME, USAGE, RECOGNIZED_ARGS, DESCRIPTION, execute};
+
+// Takes a Message and arg array
+// Returns the archive object and the filename
+// the filename specifies what is getting archived
+async function getArchiveData(message, args) {
     let archivedData = {};
     let filename = '';
-
-    const invokedTime = (new Date()).toISOString();
 
     switch (args[0]) {
       case 'metadata':
@@ -66,14 +76,8 @@ async function execute(message, args) {
         console.log('none of the above dispatch');
     }
 
-    filename += '_' + invokedTime + '.json';
-
-    // This is an async function but it doesn't matter to us how
-    // long it takes to get there. Nothing here depends on it.
-    sendArchivedFile(message.channel, filename, archivedData);
+    return [archivedData, filename];
 }
-
-export {NAME, USAGE, RECOGNIZED_ARGS, DESCRIPTION, execute};
 
 // Takes a TextChannel and an argument array
 // Decides how to prepare data in a channel based on the args
