@@ -1,34 +1,35 @@
-import process from 'process';
 import {Collection} from 'discord.js';
 import {createReadStream, createWriteStream, rmSync, writeFileSync} from 'fs';
+import process from 'process';
 import {pipeline} from 'stream';
 import {createGzip} from 'zlib';
 
 const NAME = 'archive';
 const USAGE = `Usage: ${process.env.PREFIX}archive ((help | metadata | participants | complete) | (text (reactions | stickers | attachments | threads)* | whole-messages) messages-only?)`;
 const RECOGNIZED_ARGS = [
-      'help', 'metadata', 'participants', 'complete', 'text', 'reactions',
-      'stickers', 'attachments', 'threads', 'whole-messages', 'messages-only'
-    ];
+  'help', 'metadata', 'participants', 'complete', 'text', 'reactions',
+  'stickers', 'attachments', 'threads', 'whole-messages', 'messages-only'
+];
 const DESCRIPTION = 'Creates a .json representation of what you choose to archive and uploads it to the same channel that the command was executed in.\n\nmetadata - only captures guild and channel information.\nparticipants - only captures information about who has ever participated in the channel.\ncomplete - captures everything (see Capture Selection).\nhelp - will send the usage and this message to the channel.\n\nCapture Selection:\ntext - will capture only the textual content for each message. Follow up with "reactions", "stickers", "attachments", and/or "threads" to choose what else to capture.\nwhole-messages - captures everything.\nmessages-only - used to ignore metadata and participants since they are captured by default.\n\nOnly the guild owner can execute this command.';
 
 async function execute(message, args) {
-    if (message.guild.ownerId !== message.author.id) {
-      message.channel.send('Only the guild owner can execute this command.');
-      return;
-    }
+  if (message.guild.ownerId !== message.author.id) {
+    message.channel.send('Only the guild owner can execute this command.');
+    return;
+  }
 
-    if (!isValidCommand(args, message.channel)) return;
+  if (!isValidCommand(args, message.channel)) return;
 
-    if (args[0] === 'help') {
-      message.channel.send(`${USAGE}\n${DESCRIPTION}`);
-      return;
-    };
+  if (args[0] === 'help') {
+    message.channel.send(`${USAGE}\n${DESCRIPTION}`);
+    return;
+  };
 
-    const invokedTime = (new Date()).toISOString();
-    const [archivedData, filename] = await getArchiveData(message, args);
+  const invokedTime = (new Date()).toISOString();
+  const [archivedData, filename] = await getArchiveData(message, args);
 
-    sendArchivedFile(message.channel, `${filename}_${invokedTime}.json`, archivedData);
+  sendArchivedFile(
+      message.channel, `${filename}_${invokedTime}.json`, archivedData);
 }
 
 export {NAME, USAGE, RECOGNIZED_ARGS, DESCRIPTION, execute};
@@ -37,46 +38,46 @@ export {NAME, USAGE, RECOGNIZED_ARGS, DESCRIPTION, execute};
 // Returns the archive object and the filename
 // the filename specifies what is getting archived
 async function getArchiveData(message, args) {
-    let archivedData = {};
-    let filename = '';
+  let archivedData = {};
+  let filename = '';
 
-    switch (args[0]) {
-      case 'metadata':
-        archivedData = getMetadata(message.channel);
-        filename = 'metadata';
-        break;
-      case 'participants':
-        args = ['text', 'reactions'];
-        archivedData = await getData(message.channel, args);
-        archivedData = archivedData.participantData.participants;
-        filename = 'participants';
-        break;
-      case 'complete':
-        args = ['text', 'reactions', 'stickers', 'attachments', 'threads'];
-        archivedData = await getData(message.channel, args);
-        filename = 'complete_archive';
-        break;
-      case 'text':
-        archivedData = await getData(message.channel, args);
-        filename = 'channel_archive';
-        break;
-      case 'whole-messages':
-        let onlyMessageData = false;
-        if (args.length === 2) {
-          onlyMessageData = true;
-        }
-        args = ['text', 'reactions', 'stickers', 'attachments', 'threads'];
-        if (onlyMessageData) {
-          args.push('messages-only');
-        }
-        archivedData = await getData(message.channel, args);
-        filename = 'channel_archive';
-        break;
-      default:
-        console.log('none of the above dispatch');
-    }
+  switch (args[0]) {
+    case 'metadata':
+      archivedData = getMetadata(message.channel);
+      filename = 'metadata';
+      break;
+    case 'participants':
+      args = ['text', 'reactions'];
+      archivedData = await getData(message.channel, args);
+      archivedData = archivedData.participantData.participants;
+      filename = 'participants';
+      break;
+    case 'complete':
+      args = ['text', 'reactions', 'stickers', 'attachments', 'threads'];
+      archivedData = await getData(message.channel, args);
+      filename = 'complete_archive';
+      break;
+    case 'text':
+      archivedData = await getData(message.channel, args);
+      filename = 'channel_archive';
+      break;
+    case 'whole-messages':
+      let onlyMessageData = false;
+      if (args.length === 2) {
+        onlyMessageData = true;
+      }
+      args = ['text', 'reactions', 'stickers', 'attachments', 'threads'];
+      if (onlyMessageData) {
+        args.push('messages-only');
+      }
+      archivedData = await getData(message.channel, args);
+      filename = 'channel_archive';
+      break;
+    default:
+      console.log('none of the above dispatch');
+  }
 
-    return [archivedData, filename];
+  return [archivedData, filename];
 }
 
 // Takes a TextChannel and an argument array
@@ -96,10 +97,7 @@ async function getData(channel, args) {
       participantCount: participants.size,
       participants: participants
     };
-    data.messageData = {
-      messageCount: messageData.size,
-      messages: messageData
-    };
+    data.messageData = {messageCount: messageData.size, messages: messageData};
   }
 
   return data;
@@ -189,8 +187,7 @@ async function getMessageData(messageCollection, args) {
     }
 
     if (args.includes('reactions')) {
-      extractedData.reactions =
-          [await getReactionData(message, participants)];
+      extractedData.reactions = [await getReactionData(message, participants)];
     }
 
     if (args.includes('stickers')) {
@@ -239,7 +236,8 @@ function getStickers(message) {
       name: sticker.name,
       url: sticker.url,
       creator: sticker.user.tag
-    }
+    };
+
     stickers.push(stickerInfo);
   }
 
@@ -260,6 +258,7 @@ function getAttachments(message) {
       url: attachment.url,
       size: attachment.size
     };
+
     attachments.push(attachmentInfo);
   }
 
@@ -311,6 +310,7 @@ function updateUserCollection(participantCollection, user) {
       tag: user.tag,
       pfp: user.displayAvatarURL({dynamic: true})
     };
+
     participantCollection.set(user.tag, participant);
   }
 }
