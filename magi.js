@@ -1,7 +1,7 @@
-import process from 'process';
 import {Client, Collection, Intents} from 'discord.js';
 import {config} from 'dotenv';
 import {readdirSync} from 'fs';
+import process from 'process';
 
 const INTENTS = [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES];
 
