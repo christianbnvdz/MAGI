@@ -1,6 +1,6 @@
 import {Collection} from 'discord.js';
-import {writeFile, rm} from 'fs/promises'
 import {createReadStream, createWriteStream} from 'fs';
+import {rm, writeFile} from 'fs/promises';
 import process from 'process';
 import {pipeline} from 'stream/promises';
 import {createGzip} from 'zlib';
@@ -49,17 +49,17 @@ async function getArchiveData(message, args) {
       break;
     case 'participants':
       args = ['text', 'reactions'];
-      archivedData = await getData(message.channel, args);
+      archivedData = await getChannelData(message.channel, args);
       archivedData = archivedData.participantData.participants;
       filename = 'participants';
       break;
     case 'complete':
       args = ['text', 'reactions', 'stickers', 'attachments', 'threads'];
-      archivedData = await getData(message.channel, args);
+      archivedData = await getChannelData(message.channel, args);
       filename = 'complete_archive';
       break;
     case 'text':
-      archivedData = await getData(message.channel, args);
+      archivedData = await getChannelData(message.channel, args);
       filename = 'channel_archive';
       break;
     case 'whole-messages':
@@ -71,7 +71,7 @@ async function getArchiveData(message, args) {
       if (onlyMessageData) {
         args.push('messages-only');
       }
-      archivedData = await getData(message.channel, args);
+      archivedData = await getChannelData(message.channel, args);
       filename = 'channel_archive';
       break;
     default:
@@ -84,11 +84,11 @@ async function getArchiveData(message, args) {
 // Takes a TextChannel and an argument array
 // Decides how to prepare data in a channel based on the args
 // array given. Returns an object holding all the data.
-async function getData(channel, args) {
+async function getChannelData(channel, args) {
   let data;
 
   let messages = await getChannelMessages(channel);
-  let [messageData, participants] = await getMessageData(messages, args);
+  let [messageData, participants] = await extractMessageData(messages, args);
 
   if (args.includes('messages-only')) {
     data = messageData;
@@ -130,7 +130,7 @@ function getMetadata(channel) {
 // after compressing using gzip
 async function sendArchivedFile(channel, filename, archiveObj) {
   const gzip = createGzip();
-  const ext = '.gz'
+  const ext = '.gz';
 
   await writeFile(filename, JSON.stringify(archiveObj), 'utf8');
 
@@ -152,7 +152,7 @@ async function sendArchivedFile(channel, filename, archiveObj) {
 // Returns a new <Collection> (snowflake, object), the original is not modified
 // and a new <Collection> (user tag, participant object) as
 // [extracted messages collection, participant collection]
-async function getMessageData(messageCollection, args) {
+async function extractMessageData(messageCollection, args) {
   let extractedCollection = new Collection();
   let participants = new Collection();
 
@@ -182,7 +182,7 @@ async function getMessageData(messageCollection, args) {
     }
 
     if (args.includes('reactions')) {
-      extractedData.reactions = [await getReactionData(message, participants)];
+      extractedData.reactions = [await getReactions(message, participants)];
     }
 
     if (args.includes('stickers')) {
@@ -205,7 +205,7 @@ async function getMessageData(messageCollection, args) {
       extractedData.threadId = message.thread.id;
       const threadMessages = await getChannelMessages(message.thread);
       const [messages, threadParticipants] =
-          await getMessageData(threadMessages, args);
+          await extractMessageData(threadMessages, args);
       // join messages and participants
       extractedCollection = extractedCollection.concat(messages);
       for (const [tag, participantInfo] of threadParticipants) {
@@ -265,7 +265,7 @@ function getAttachments(message) {
 // in case a new participant is found.
 // Extracts reaction data and returns an object containing
 // Each reaction and the users that reacted with it
-async function getReactionData(message, participants) {
+async function getReactions(message, participants) {
   let reactionData = {};
   let reactions = message.reactions.cache;
 
