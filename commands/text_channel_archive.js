@@ -1,7 +1,8 @@
 import {Collection} from 'discord.js';
-import {createReadStream, createWriteStream, rmSync, writeFileSync} from 'fs';
+import {writeFile, rm} from 'fs/promises'
+import {createReadStream, createWriteStream} from 'fs';
 import process from 'process';
-import {pipeline} from 'stream';
+import {pipeline} from 'stream/promises';
 import {createGzip} from 'zlib';
 
 const NAME = 'archive';
@@ -131,24 +132,18 @@ async function sendArchivedFile(channel, filename, archiveObj) {
   const gzip = createGzip();
   const ext = '.gz'
 
-  writeFileSync(filename, JSON.stringify(archiveObj), 'utf8');
+  await writeFile(filename, JSON.stringify(archiveObj), 'utf8');
 
   const source = createReadStream(filename);
   const destination = createWriteStream(filename + ext);
 
-  pipeline(source, gzip, destination, async (err) => {
-    if (err) {
-      console.log('An error occured creating the gzip file.');
-      console.log(err);
-      return;
-    }
+  await pipeline(source, gzip, destination);
 
-    await channel.send(
-        {files: [{attachment: `./${filename + ext}`, name: filename + ext}]});
+  await channel.send(
+      {files: [{attachment: `./${filename + ext}`, name: filename + ext}]});
 
-    rmSync(filename);
-    rmSync(filename + ext);
-  });
+  rm(filename);
+  rm(filename + ext);
 }
 
 // Takes a <Collection> (snowflake, message) and args as input
