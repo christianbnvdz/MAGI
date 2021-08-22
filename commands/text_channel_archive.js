@@ -87,7 +87,7 @@ async function getArchiveData(message, args) {
 async function getChannelData(channel, args) {
   let data;
 
-  let messages = await getChannelMessages(channel);
+  //let messages = await getChannelMessages(channel);
   let [messageData, participants] = await extractMessageData(messages, args);
 
   if (args.includes('messages-only')) {
@@ -310,23 +310,17 @@ function updateUserCollection(participantCollection, user) {
   }
 }
 
-// Get all the messages from a channel of type TextChannel
-// Returns all the channel messages as <Collection> (snowflake, message)
-// Messages are from newest to oldest
-async function getChannelMessages(channel) {
-  // Discord.js only allows fetching a max of 100 messages each time
-  let fetchOptions = {limit: 100};
-  let messages = await channel.messages.fetch(fetchOptions);
-  let messagesRetreived = messages.size;
+// Takes a TextChannel and a snowflake
+// Get a maximum of 100 messages in a channel starting at the
+// specified snowflake.
+// NOTE: Discord.js only allows fetching a max of 100 messages at a time.
+// If snowflake is null then starts from most recent message in the channel.
+// Returns messages as <Collection> (snowflake, message)
+// Messages in returned collection are from newest to oldest
+async function getChannelMessages(channel, snowflake = null) {
+  const fetchOptions = {limit: 100, before: snowflake};
 
-  while (messagesRetreived === 100) {
-    fetchOptions.before = messages.lastKey();
-    const messageBatch = await channel.messages.fetch(fetchOptions);
-    messages = messages.concat(messageBatch);
-    messagesRetreived = messageBatch.size;
-  }
-
-  return messages;
+  return await channel.messages.fetch(fetchOptions);
 }
 
 // args is a javascript array and channel is a TextChannel
