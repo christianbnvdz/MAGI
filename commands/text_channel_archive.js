@@ -5,6 +5,9 @@ import process from 'process';
 import {pipeline} from 'stream/promises';
 import {createGzip} from 'zlib';
 
+// The maximum number of messages Discord.js lets you fetch at a time
+const MESSAGE_FETCH_LIMIT = 100;
+
 const NAME = 'archive';
 const USAGE = `Usage: ${process.env.PREFIX}archive ((help | metadata | participants | complete) | (text (reactions | stickers | attachments | threads)* | whole-messages) messages-only?)`;
 const RECOGNIZED_ARGS = [
@@ -183,7 +186,7 @@ async function prepareMessageData(channel, args) {
 
     await messagesFetched;
 
-  } while (fetchedMessageSet.size === 100);
+  } while (fetchedMessageSet.size === MESSAGE_FETCH_LIMIT);
 
   if (fetchedMessageSet.size !== 0) {
     [messageData, userData] = await extractMessageData(fetchedMessageSet, args);
@@ -361,12 +364,11 @@ function updateUserCollection(participantCollection, user) {
 // Takes a TextChannel and an optional snowflake
 // Get a maximum of 100 messages in a channel starting at the
 // specified snowflake.
-// NOTE: Discord.js only allows fetching a max of 100 messages at a time.
 // If snowflake is null then starts from most recent message in the channel.
 // Returns a Promise of <Collection> (snowflake, message)
 // Messages in returned collection are from newest to oldest
 function getChannelMessages(channel, snowflake = null) {
-  const fetchOptions = {limit: 100, before: snowflake};
+  const fetchOptions = {limit: MESSAGE_FETCH_LIMIT, before: snowflake};
 
   return channel.messages.fetch(fetchOptions);
 }
