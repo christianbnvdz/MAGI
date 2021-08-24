@@ -147,7 +147,7 @@ async function sendArchivedFile(channel, filename, archiveObj) {
   rm(filename + ext);
 }
 
-// Takes a TextChannel and args as input 
+// Takes a TextChannel and args as input
 // Also extracts info about all those who have ever sent a message
 // Returns a <Collection> (snowflake, messageObj) holding all messages in the
 // channel with the desired information and a new
@@ -257,14 +257,13 @@ async function extractMessageData(messageCollection, args) {
       extractedData.spawnedThread = true;
       extractedData.threadId = message.thread.id;
       const [threadMessages, threadParticipants] =
-	  await prepareMessageData(message.thread, args);
+          await prepareMessageData(message.thread, args);
       // join messages and participants
       extractedMessages = extractedMessages.concat(threadMessages);
       for (const [tag, participantInfo] of threadParticipants) {
         participants.set(tag, participantInfo);
       }
     }
-
   }
 
   return [extractedMessages, participants];
