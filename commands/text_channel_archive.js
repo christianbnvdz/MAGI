@@ -225,11 +225,11 @@ async function extractMessageData(messageCollection, args) {
     }
 
     // Only true if it's a message in a thread
-    /*if (message.channel.type === 'GUILD_NEWS_THREAD' ||
+    if (message.channel.type === 'GUILD_NEWS_THREAD' ||
         message.channel.type === 'GUILD_PUBLIC_THREAD' ||
         message.channel.type === 'GUILD_PRIVATE_THREAD') {
       extractedData.threadId = message.channelId;
-    }*/
+    }
 
     if (args.includes('reactions')) {
       extractedData.reactions = [await getReactions(message, participants)];
@@ -250,20 +250,17 @@ async function extractMessageData(messageCollection, args) {
     }
 
     // This will never be true for messages that are in threads
-    /*if (args.includes('threads') && message.hasThread) {
+    if (args.includes('threads') && message.hasThread) {
       extractedData.spawnedThread = true;
       extractedData.threadId = message.thread.id;
-      const threadMessages = await getChannelMessages(message.thread);
-      const [messages, threadParticipants] =
-          await extractMessageData(threadMessages, args);
+      const [threadMessages, threadParticipants] =
+	  await prepareMessageData(message.thread, args);
       // join messages and participants
-      extractedCollection = extractedCollection.concat(messages);
+      extractedMessages = extractedMessages.concat(threadMessages);
       for (const [tag, participantInfo] of threadParticipants) {
-        if (!participants.has(tag)) {
-          participants.set(tag, participantInfo);
-        }
+        participants.set(tag, participantInfo);
       }
-    }*/
+    }
 
   }
 
