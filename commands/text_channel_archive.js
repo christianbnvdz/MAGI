@@ -86,9 +86,7 @@ async function getArchiveData(message, args) {
 // array given. Returns an object holding all the data.
 async function getChannelData(channel, args) {
   let data;
-
-  //let messages = await getChannelMessages(channel);
-  let [messageData, participants] = await extractMessageData(messages, args);
+  let [messageData, participants] = await prepareMessageData(channel, args);
 
   if (args.includes('messages-only')) {
     data = messageData;
@@ -146,14 +144,27 @@ async function sendArchivedFile(channel, filename, archiveObj) {
   rm(filename + ext);
 }
 
-// Takes a <Collection> (snowflake, message) and args as input
-// Extracts only desired information from each message in the collection
+// Takes a TextChannel and args as input 
 // Also extracts info about all those who have ever sent a message
-// Returns a new <Collection> (snowflake, object), the original is not modified
-// and a new <Collection> (user tag, participant object) as
+// Returns a <Collection> (snowflake, messageObj) holding all messages in the
+// channel with the desired information and a new 
+// <Collection> (user tag, participantObj) as
+// [extracted messages collection, participant collection]
+async function prepareMessageData(channel, args) {
+  let extractedMessages = new Collection();
+  let participants = new Collection();
+
+  return [extractedMessages, participants];
+}
+
+// Takes a collection of messages and arg array
+// Extracts data specified in args from each message
+// in the collection.
+// Returns a <Collection> (snowflake, messageObj) and
+// <Collection> (user tag, participantObj) as
 // [extracted messages collection, participant collection]
 async function extractMessageData(messageCollection, args) {
-  let extractedCollection = new Collection();
+  let extractedMessages = new Collection();
   let participants = new Collection();
 
   for (const [snowflake, message] of messageCollection) {
@@ -175,11 +186,11 @@ async function extractMessageData(messageCollection, args) {
     }
 
     // Only true if it's a message in a thread
-    if (message.channel.type === 'GUILD_NEWS_THREAD' ||
+    /*if (message.channel.type === 'GUILD_NEWS_THREAD' ||
         message.channel.type === 'GUILD_PUBLIC_THREAD' ||
         message.channel.type === 'GUILD_PRIVATE_THREAD') {
       extractedData.threadId = message.channelId;
-    }
+    }*/
 
     if (args.includes('reactions')) {
       extractedData.reactions = [await getReactions(message, participants)];
@@ -193,14 +204,14 @@ async function extractMessageData(messageCollection, args) {
       extractedData.attachments = getAttachments(message);
     }
 
-    extractedCollection.set(message.id, extractedData);
+    extractedMessages.set(message.id, extractedData);
     updateUserCollection(participants, message.author);
     if (message.type === 'GUILD_MEMBER_JOIN') {
       participants.get(message.author.tag).joined = message.createdAt;
     }
 
     // This will never be true for messages that are in threads
-    if (args.includes('threads') && message.hasThread) {
+    /*if (args.includes('threads') && message.hasThread) {
       extractedData.spawnedThread = true;
       extractedData.threadId = message.thread.id;
       const threadMessages = await getChannelMessages(message.thread);
@@ -213,10 +224,11 @@ async function extractMessageData(messageCollection, args) {
           participants.set(tag, participantInfo);
         }
       }
-    }
+    }*/
+
   }
 
-  return [extractedCollection, participants];
+  return [extractedMessages, participants];
 }
 
 // Takes a Message
@@ -310,7 +322,7 @@ function updateUserCollection(participantCollection, user) {
   }
 }
 
-// Takes a TextChannel and a snowflake
+// Takes a TextChannel and an optional snowflake
 // Get a maximum of 100 messages in a channel starting at the
 // specified snowflake.
 // NOTE: Discord.js only allows fetching a max of 100 messages at a time.
