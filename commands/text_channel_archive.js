@@ -5,6 +5,9 @@ import process from 'process';
 import {pipeline} from 'stream/promises';
 import {createGzip} from 'zlib';
 
+// The maximum number of messages Discord.js lets you fetch at a time
+const MESSAGE_FETCH_LIMIT = 100;
+
 const NAME = 'archive';
 const USAGE = `Usage: ${process.env.PREFIX}archive ((help | metadata | participants | complete) | (text (reactions | stickers | attachments | threads)* | whole-messages) messages-only?)`;
 const RECOGNIZED_ARGS = [
@@ -86,9 +89,7 @@ async function getArchiveData(message, args) {
 // array given. Returns an object holding all the data.
 async function getChannelData(channel, args) {
   let data;
-
-  let messages = await getChannelMessages(channel);
-  let [messageData, participants] = await extractMessageData(messages, args);
+  let [messageData, participants] = await prepareMessageData(channel, args);
 
   if (args.includes('messages-only')) {
     data = messageData;
@@ -146,14 +147,66 @@ async function sendArchivedFile(channel, filename, archiveObj) {
   rm(filename + ext);
 }
 
-// Takes a <Collection> (snowflake, message) and args as input
-// Extracts only desired information from each message in the collection
+// Takes a TextChannel and args as input
 // Also extracts info about all those who have ever sent a message
-// Returns a new <Collection> (snowflake, object), the original is not modified
-// and a new <Collection> (user tag, participant object) as
+// Returns a <Collection> (snowflake, messageObj) holding all messages in the
+// channel with the desired information and a new
+// <Collection> (user tag, participantObj) as
+// [extracted messages collection, participant collection]
+async function prepareMessageData(channel, args) {
+  let extractedMessages = new Collection();
+  let participants = new Collection();
+
+  // Holds a promise
+  let messagesFetched;
+  // The actual messages fetched
+  let fetchedMessageSet = new Collection();
+  let lastSnowflake = null;
+  // For holding extracted data of the fetchedMessageSet
+  let messageData;
+  let userData;
+
+  do {
+    messagesFetched = getChannelMessages(channel, lastSnowflake);
+
+    [messageData, userData] = await extractMessageData(fetchedMessageSet, args);
+
+    messagesFetched.then((messages) => {
+      fetchedMessageSet = messages;
+      lastSnowflake = fetchedMessageSet.lastKey();
+    });
+
+    // Combine message data and user data
+    extractedMessages = extractedMessages.concat(messageData);
+    // Will update the participants list with join information
+    // since messages are from newest to oldest. Can be more efficient.
+    for (const [tag, user] of userData) {
+      participants.set(tag, user);
+    }
+
+    await messagesFetched;
+
+  } while (fetchedMessageSet.size === MESSAGE_FETCH_LIMIT);
+
+  if (fetchedMessageSet.size !== 0) {
+    [messageData, userData] = await extractMessageData(fetchedMessageSet, args);
+    extractedMessages = extractedMessages.concat(messageData);
+    for (const [tag, user] of userData) {
+      participants.set(tag, user);
+    }
+  }
+
+  return [extractedMessages, participants];
+}
+
+// Takes a collection of messages and arg array
+// Extracts data specified in args from each message
+// in the collection.
+// Returns a <Collection> (snowflake, messageObj) and
+// <Collection> (user tag, participantObj) as
 // [extracted messages collection, participant collection]
 async function extractMessageData(messageCollection, args) {
-  let extractedCollection = new Collection();
+  let extractedMessages = new Collection();
   let participants = new Collection();
 
   for (const [snowflake, message] of messageCollection) {
@@ -193,7 +246,7 @@ async function extractMessageData(messageCollection, args) {
       extractedData.attachments = getAttachments(message);
     }
 
-    extractedCollection.set(message.id, extractedData);
+    extractedMessages.set(message.id, extractedData);
     updateUserCollection(participants, message.author);
     if (message.type === 'GUILD_MEMBER_JOIN') {
       participants.get(message.author.tag).joined = message.createdAt;
@@ -203,20 +256,17 @@ async function extractMessageData(messageCollection, args) {
     if (args.includes('threads') && message.hasThread) {
       extractedData.spawnedThread = true;
       extractedData.threadId = message.thread.id;
-      const threadMessages = await getChannelMessages(message.thread);
-      const [messages, threadParticipants] =
-          await extractMessageData(threadMessages, args);
+      const [threadMessages, threadParticipants] =
+          await prepareMessageData(message.thread, args);
       // join messages and participants
-      extractedCollection = extractedCollection.concat(messages);
+      extractedMessages = extractedMessages.concat(threadMessages);
       for (const [tag, participantInfo] of threadParticipants) {
-        if (!participants.has(tag)) {
-          participants.set(tag, participantInfo);
-        }
+        participants.set(tag, participantInfo);
       }
     }
   }
 
-  return [extractedCollection, participants];
+  return [extractedMessages, participants];
 }
 
 // Takes a Message
@@ -310,23 +360,16 @@ function updateUserCollection(participantCollection, user) {
   }
 }
 
-// Get all the messages from a channel of type TextChannel
-// Returns all the channel messages as <Collection> (snowflake, message)
-// Messages are from newest to oldest
-async function getChannelMessages(channel) {
-  // Discord.js only allows fetching a max of 100 messages each time
-  let fetchOptions = {limit: 100};
-  let messages = await channel.messages.fetch(fetchOptions);
-  let messagesRetreived = messages.size;
+// Takes a TextChannel and an optional snowflake
+// Get a maximum of 100 messages in a channel starting at the
+// specified snowflake.
+// If snowflake is null then starts from most recent message in the channel.
+// Returns a Promise of <Collection> (snowflake, message)
+// Messages in returned collection are from newest to oldest
+function getChannelMessages(channel, snowflake = null) {
+  const fetchOptions = {limit: MESSAGE_FETCH_LIMIT, before: snowflake};
 
-  while (messagesRetreived === 100) {
-    fetchOptions.before = messages.lastKey();
-    const messageBatch = await channel.messages.fetch(fetchOptions);
-    messages = messages.concat(messageBatch);
-    messagesRetreived = messageBatch.size;
-  }
-
-  return messages;
+  return channel.messages.fetch(fetchOptions);
 }
 
 // args is a javascript array and channel is a TextChannel
