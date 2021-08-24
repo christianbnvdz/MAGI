@@ -51,7 +51,7 @@ async function getArchiveData(message, args) {
       filename = 'metadata';
       break;
     case 'participants':
-      args = ['text', 'reactions'];
+      args = ['text', 'reactions', 'threads'];
       archivedData = await getChannelData(message.channel, args);
       archivedData = archivedData.participantData.participants;
       filename = 'participants';
