@@ -29,17 +29,21 @@ async function execute(message, args) {
     return;
   };
 
-  generateArchiveFiles(message, args);
+  // Eventually there will be code after this to send the files
+  await generateArchiveFiles(message, args);
 }
 
 export {NAME, USAGE, RECOGNIZED_ARGS, DESCRIPTION, execute};
 
 // Takes a Message and arg array
 // generates all the archive files requested based on args
+// Returns a promise indicating all appropriate files were generated
 async function generateArchiveFiles(message, args) {
+  let completed;
+
   switch (args[0]) {
     case 'metadata':
-      generateMetadataFile(message.channel);
+      completed = generateMetadataFile(message.channel);
       break;
     case 'participants':
       args = ['text', 'reactions', 'threads'];
@@ -47,25 +51,27 @@ async function generateArchiveFiles(message, args) {
       break;
     case 'complete':
       args = ['text', 'reactions', 'stickers', 'attachments', 'threads'];
-      generateChannelFiles(message.channel, args);
+      completed = generateChannelFiles(message.channel, args);
       break;
     case 'text':
-      generateChannelFiles(message.channel, args);
+      completed = generateChannelFiles(message.channel, args);
       break;
     case 'whole-messages':
       let onlyMessageData = (args.length === 2);
       args = ['text', 'reactions', 'stickers', 'attachments', 'threads'];
       if (onlyMessageData) args.push('messages-only');
-      generateChannelFiles(message.channel, args);
+      completed = generateChannelFiles(message.channel, args);
       break;
     default:
       console.log('none of the above dispatch');
   }
+
+  return completed;
 }
 
 // Takes a TextChannel and an argument array
 // Generates the channel's files based on args
-async function generateChannelFiles(channel, args) {
+/*async function generateChannelFiles(channel, args) {
   let data;
   let [messageData, participants] = await prepareMessageData(channel, args);
 
@@ -81,10 +87,11 @@ async function generateChannelFiles(channel, args) {
   }
 
   return data;
-}
+}*/
 
 // Takes a TextChannel as input
 // Generates the metadata json file for the channel
+// Returns a promise indicating the end of file generation
 function generateMetadataFile(channel) {
   const metadata = {
     guildId: channel.guild.id,
@@ -100,7 +107,23 @@ function generateMetadataFile(channel) {
     channelNsfw: channel.nsfw
   };
 
+  return generateFile('metadata.json', metadata);
+}
 
+// Takes a filename and an object
+// Generates a json file and gzips it
+// Deletes the json file after
+// Returns a promise indicating the completion of gzipping
+async function generateFile(filename, obj) {
+  const gzip = createGzip();
+  const ext = '.gz';
+
+  await writeFile(filename, JSON.stringify(obj), 'utf8');
+
+  const source = createReadStream(filename);
+  const destination = createWriteStream(filename + ext);
+
+  return pipeline(source, gzip, destination);
 }
 
 // Takes a TextChannel
