@@ -1,5 +1,5 @@
 import {Collection} from 'discord.js';
-import {createReadStream, createWriteStream} from 'fs';
+import {createReadStream, createWriteStream, existsSync} from 'fs';
 import {rm, writeFile} from 'fs/promises';
 import process from 'process';
 import {pipeline} from 'stream/promises';
@@ -29,8 +29,8 @@ async function execute(message, args) {
     return;
   };
 
-  // Eventually there will be code after this to send the files
   await generateArchiveFiles(message, args);
+  sendArchiveFiles(message.channel);
 }
 
 export {NAME, USAGE, RECOGNIZED_ARGS, DESCRIPTION, execute};
@@ -107,46 +107,30 @@ function generateMetadataFile(channel) {
     channelNsfw: channel.nsfw
   };
 
-  return generateFile('metadata.json', metadata);
-}
-
-// Takes a filename and an object
-// Generates a json file and gzips it
-// Deletes the json file after
-// Returns a promise indicating the completion of gzipping
-async function generateFile(filename, obj) {
-  const gzip = createGzip();
-  const ext = '.gz';
-
-  await writeFile(filename, JSON.stringify(obj), 'utf8');
-
-  const source = createReadStream(filename);
-  const destination = createWriteStream(filename + ext);
-
-  return pipeline(source, gzip, destination);
+  return writeFile('metadata.json', JSON.stringify(metadata), 'utf8');
 }
 
 // Takes a TextChannel
-// Takes a string consisting of the filename (including extension)
-// Takes the archive object to send in that file
-// Sends the information in the archive object to the channel
-// after compressing using gzip
-async function sendArchivedFile(channel, filename, archiveObj) {
-  const gzip = createGzip();
-  const ext = '.gz';
+// Sends the information in the archive files to the channel
+// after compressing using gzip and tarring if need be
+// Deletes files after sending to channel
+async function sendArchiveFiles(channel) {
+  // If the metadata.json exists then either we just wanted the metadata or
+  // we have metadata, participants, and message files generated.
 
-  await writeFile(filename, JSON.stringify(archiveObj), 'utf8');
+  // If it's just the metadata.json that is generated then send as is
+  if (existsSync('./metadata.json') && !existsSync('./participants.json')) {
+    sendFile(channel, 'metadata.json');
+  }
+}
 
-  const source = createReadStream(filename);
-  const destination = createWriteStream(filename + ext);
-
-  await pipeline(source, gzip, destination);
-
+// Takes a TextChannel and filename
+// Sends the specified file to the channel
+// Deletes files after sending them
+async function sendFile(channel, filename) {
   await channel.send(
-      {files: [{attachment: `./${filename + ext}`, name: filename + ext}]});
-
+      {files: [{attachment: `./${filename}`, name: filename}]});
   rm(filename);
-  rm(filename + ext);
 }
 
 // Takes a TextChannel and args as input
