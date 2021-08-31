@@ -29,65 +29,43 @@ async function execute(message, args) {
     return;
   };
 
-  const invokedTime = (new Date()).toISOString();
-  const [archivedData, filename] = await getArchiveData(message, args);
-
-  sendArchivedFile(
-      message.channel, `${filename}_${invokedTime}.json`, archivedData);
+  generateArchiveFiles(message, args);
 }
 
 export {NAME, USAGE, RECOGNIZED_ARGS, DESCRIPTION, execute};
 
 // Takes a Message and arg array
-// Returns the archive object and the filename
-// the filename specifies what is getting archived
-async function getArchiveData(message, args) {
-  let archivedData = {};
-  let filename = '';
-
+// generates all the archive files requested based on args
+async function generateArchiveFiles(message, args) {
   switch (args[0]) {
     case 'metadata':
-      archivedData = getMetadata(message.channel);
-      filename = 'metadata';
+      generateMetadataFile(message.channel);
       break;
     case 'participants':
       args = ['text', 'reactions', 'threads'];
-      archivedData = await getChannelData(message.channel, args);
-      archivedData = archivedData.participantData.participants;
-      filename = 'participants';
+      message.channel.send('Participants argument is currently unsupported.');
       break;
     case 'complete':
       args = ['text', 'reactions', 'stickers', 'attachments', 'threads'];
-      archivedData = await getChannelData(message.channel, args);
-      filename = 'complete_archive';
+      generateChannelFiles(message.channel, args);
       break;
     case 'text':
-      archivedData = await getChannelData(message.channel, args);
-      filename = 'channel_archive';
+      generateChannelFiles(message.channel, args);
       break;
     case 'whole-messages':
-      let onlyMessageData = false;
-      if (args.length === 2) {
-        onlyMessageData = true;
-      }
+      let onlyMessageData = (args.length === 2);
       args = ['text', 'reactions', 'stickers', 'attachments', 'threads'];
-      if (onlyMessageData) {
-        args.push('messages-only');
-      }
-      archivedData = await getChannelData(message.channel, args);
-      filename = 'channel_archive';
+      if (onlyMessageData) args.push('messages-only');
+      generateChannelFiles(message.channel, args);
       break;
     default:
       console.log('none of the above dispatch');
   }
-
-  return [archivedData, filename];
 }
 
 // Takes a TextChannel and an argument array
-// Decides how to prepare data in a channel based on the args
-// array given. Returns an object holding all the data.
-async function getChannelData(channel, args) {
+// Generates the channel's files based on args
+async function generateChannelFiles(channel, args) {
   let data;
   let [messageData, participants] = await prepareMessageData(channel, args);
 
@@ -106,8 +84,8 @@ async function getChannelData(channel, args) {
 }
 
 // Takes a TextChannel as input
-// Returns an object with metadata of the guild and channel
-function getMetadata(channel) {
+// Generates the metadata json file for the channel
+function generateMetadataFile(channel) {
   const metadata = {
     guildId: channel.guild.id,
     guildName: channel.guild.name,
@@ -121,7 +99,8 @@ function getMetadata(channel) {
     channelCreationDate: channel.createdAt,
     channelNsfw: channel.nsfw
   };
-  return metadata;
+
+
 }
 
 // Takes a TextChannel
