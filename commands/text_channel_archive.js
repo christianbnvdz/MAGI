@@ -115,13 +115,25 @@ function generateMetadataFile(channel) {
 // after compressing using gzip and tarring if need be
 // Deletes files after sending to channel
 async function sendArchiveFiles(channel) {
+  const generatedMetadata = existsSync('./metadata.json');
+  const generatedParticipants = existsSync('./participants.json');
   // If the metadata.json exists then either we just wanted the metadata or
   // we have metadata, participants, and message files generated.
-
   // If it's just the metadata.json that is generated then send as is
-  if (existsSync('./metadata.json') && !existsSync('./participants.json')) {
+  if (generatedMetadata && !generatedParticipants) {
     sendFile(channel, 'metadata.json');
   }
+  // If only participants.json was generated, same as above
+  if (generatedParticipants && !generatedMetadata) {
+    sendFile(channel, 'participants.json');
+  }
+  // At this point, either both exist or none exist
+  // If one exists then metadata, participants, and message files exist
+  // If not then just message files exist
+  if (existsSync('./metadata.json')) {
+    // tar.gz the first page with the metadata and participants and send
+  }
+  // gz each of the remaining pages and send
 }
 
 // Takes a TextChannel and filename
