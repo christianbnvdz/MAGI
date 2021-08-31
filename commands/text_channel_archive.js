@@ -71,23 +71,19 @@ async function generateArchiveFiles(message, args) {
 
 // Takes a TextChannel and an argument array
 // Generates the channel's files based on args
-/*async function generateChannelFiles(channel, args) {
-  let data;
-  let [messageData, participants] = await prepareMessageData(channel, args);
+// Returns a promise that was created by Promise.all()
+// that aggregated all promises of each file to generate
+async function generateChannelFiles(channel, args) {
+  let filePromises = [];
 
-  if (args.includes('messages-only')) {
-    data = messageData;
-  } else {
-    data = {metadata: getMetadata(channel)};
-    data.participantData = {
-      participantCount: participants.size,
-      participants: participants
-    };
-    data.messageData = {messageCount: messageData.size, messages: messageData};
+  if (!args.includes('messages-only')) {
+    filePromises.push(generateMetadataFile(channel));
   }
 
-  return data;
-}*/
+  filePromises.concat(generateMessageFiles(channel, args));
+
+  return Promise.all(filePromises);
+}
 
 // Takes a TextChannel as input
 // Generates the metadata json file for the channel
@@ -114,7 +110,7 @@ function generateMetadataFile(channel) {
 // Sends the information in the archive files to the channel
 // after compressing using gzip and tarring if need be
 // Deletes files after sending to channel
-async function sendArchiveFiles(channel) {
+function sendArchiveFiles(channel) {
   const generatedMetadata = existsSync('./metadata.json');
   const generatedParticipants = existsSync('./participants.json');
   // If the metadata.json exists then either we just wanted the metadata or
@@ -151,7 +147,7 @@ async function sendFile(channel, filename) {
 // channel with the desired information and a new
 // <Collection> (user tag, participantObj) as
 // [extracted messages collection, participant collection]
-async function prepareMessageData(channel, args) {
+async function generateMessageFiles(channel, args) {
   let extractedMessages = new Collection();
   let participants = new Collection();
 
@@ -255,7 +251,7 @@ async function extractMessageData(messageCollection, args) {
       extractedData.spawnedThread = true;
       extractedData.threadId = message.thread.id;
       const [threadMessages, threadParticipants] =
-          await prepareMessageData(message.thread, args);
+          await generateMessageFiles(message.thread, args);
       // join messages and participants
       extractedMessages = extractedMessages.concat(threadMessages);
       for (const [tag, participantInfo] of threadParticipants) {
