@@ -113,7 +113,8 @@ function generateMetadataFile(channel) {
 // Sends the information in the archive files to the channel
 // after compressing using gzip and tarring if need be
 // Deletes files after sending to channel
-function sendArchiveFiles(channel) {
+async function sendArchiveFiles(channel) {
+  const gzip = createGzip();
   const generatedMetadata = existsSync('./metadata.json');
   const generatedParticipants = existsSync('./participants.json');
   // If the metadata.json exists then either we just wanted the metadata or
@@ -121,18 +122,31 @@ function sendArchiveFiles(channel) {
   // If it's just the metadata.json that is generated then send as is
   if (generatedMetadata && !generatedParticipants) {
     sendFile(channel, 'metadata.json');
+    return;
   }
   // If only participants.json was generated, same as above
   if (generatedParticipants && !generatedMetadata) {
     sendFile(channel, 'participants.json');
+    return;
   }
   // At this point, either both exist or none exist
   // If one exists then metadata, participants, and message files exist
   // If not then just message files exist
   if (existsSync('./metadata.json')) {
     // tar.gz the first page with the metadata and participants and send
+    sendFile(channel, 'metadata.json');
+    sendFile(channel, 'participants.json');
   }
   // gz each of the remaining pages and send
+  let pageNo = 0;
+  while (existsSync(`./messages_${pageNo}.json`)) {
+    const source = createReadStream(`messages_${pageNo}.json`);
+    const destination = createWriteStream(`messages_${pageNo}.json.gz`);
+    await pipeline(source, gzip, destination);
+    rm(`messages_${pageNo}.json`);
+    sendFile(channel, `messages_${pageNo}.json.gz`);
+    ++pageNo;
+  }
 }
 
 // Takes a TextChannel and filename
