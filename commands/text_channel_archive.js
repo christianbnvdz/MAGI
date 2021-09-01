@@ -4,9 +4,12 @@ import {rm, writeFile} from 'fs/promises';
 import process from 'process';
 import {pipeline} from 'stream/promises';
 import {createGzip} from 'zlib';
+import {Buffer} from 'buffer';
 
 // The maximum number of messages Discord.js lets you fetch at a time
 const MESSAGE_FETCH_LIMIT = 100;
+// The maximum file size, in bytes, that the bot can upload to a channel
+const FILE_UPLOAD_SIZE_LIMIT = 8000000;
 
 const NAME = 'archive';
 const USAGE = `Usage: ${process.env.PREFIX}archive ((help | metadata | participants | complete) | (text (reactions | stickers | attachments | threads)* | whole-messages) messages-only?)`;
@@ -147,8 +150,10 @@ async function sendFile(channel, filename) {
 // channel with the desired information and a new
 // <Collection> (user tag, participantObj) as
 // [extracted messages collection, participant collection]
-async function generateMessageFiles(channel, args, inThread=false) {
-  let extractedMessages = new Collection();
+// If we are not in a subchannel then we return a promise indicating
+// whether all the files have been generated or not.
+async function generateMessageFiles(channel, args, inSubchannel=false) {
+  let preparedMessages = new Collection();
   let participants = new Collection();
   let filePromises = [];
 
@@ -160,39 +165,64 @@ async function generateMessageFiles(channel, args, inThread=false) {
   // For holding extracted data of the fetchedMessageSet
   let messageData;
   let userData;
+  // Used in message page generation
+  let preparedMessagesJson;
+  let page = 0;
 
   do {
     messagesFetched = getChannelMessages(channel, lastSnowflake);
 
     [messageData, userData] = await extractMessageData(fetchedMessageSet, args);
-
-    messagesFetched.then((messages) => {
-      fetchedMessageSet = messages;
-      lastSnowflake = fetchedMessageSet.lastKey();
-    });
-
-    // Combine message data and user data
-    extractedMessages = extractedMessages.concat(messageData);
-    // Will update the participants list with join information
+    preparedMessages = preparedMessages.concat(messageData);
+    // Will update the participants list with join information if any
     // since messages are from newest to oldest. Can be more efficient.
     for (const [tag, user] of userData) {
       participants.set(tag, user);
     }
 
-    await messagesFetched;
+    // The assumption is that extracted batches are less than 1MB.
+    // A very lax way of handling this. A more sophisticated approach can be
+    // done but for our server's purpose, we don't need more than this.
+    if (!inSubchannel) {
+      preparedMessagesJson = JSON.stringify(preparedMessages);
+      if (Buffer.byteLength(preparedMessagesJson, 'utf8') >= 
+              FILE_UPLOAD_SIZE_LIMIT) {
+        filePromises.push(writeFile(
+	    `messages_${page}.json`, preparedMessagesJson, 'utf8'));
+	++page;
+	fetchedMessageSet.clear();
+      }
+    }
 
+    fetchedMessageSet = await messagesFetched;
+    lastSnowflake = fetchedMessageSet.lastKey();
   } while (fetchedMessageSet.size === MESSAGE_FETCH_LIMIT);
 
   if (fetchedMessageSet.size !== 0) {
     [messageData, userData] = await extractMessageData(fetchedMessageSet, args);
-    extractedMessages = extractedMessages.concat(messageData);
+    preparedMessages = preparedMessages.concat(messageData);
     for (const [tag, user] of userData) {
       participants.set(tag, user);
     }
   }
 
-  if (inThread) {
-    return [extractedMessages, participants];
+  if (!inSubchannel) {
+    preparedMessagesJson = JSON.stringify(preparedMessages);
+    if (preparedMessagesJson.length > 2) {
+      filePromises.push(writeFile(
+          `messages_${page}.json`, preparedMessagesJson, 'utf8'));
+    }
+  }
+
+  // We have to generate the participants file here if applicable
+  // Generate if messages-only isnt an argument and we aren't in a subchannel
+  if (!inSubchannel && !args.includes('messages-only')) {
+    filePromises.push(writeFile(
+	'participants.json', JSON.stringify(participants), 'utf8'));
+  }
+
+  if (inSubchannel) {
+    return [preparedMessages, participants];
   } else {
     return Promise.all(filePromises);
   }
