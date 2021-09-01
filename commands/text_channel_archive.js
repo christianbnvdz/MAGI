@@ -38,7 +38,7 @@ export {NAME, USAGE, RECOGNIZED_ARGS, DESCRIPTION, execute};
 // Takes a Message and arg array
 // generates all the archive files requested based on args
 // Returns a promise indicating all appropriate files were generated
-async function generateArchiveFiles(message, args) {
+function generateArchiveFiles(message, args) {
   let completed;
 
   switch (args[0]) {
@@ -72,15 +72,15 @@ async function generateArchiveFiles(message, args) {
 // Takes a TextChannel and an argument array
 // Generates the channel's files based on args
 // Returns a promise that was created by Promise.all()
-// that aggregated all promises of each file to generate
-async function generateChannelFiles(channel, args) {
+// that indicates when files finish generating
+function generateChannelFiles(channel, args) {
   let filePromises = [];
 
   if (!args.includes('messages-only')) {
     filePromises.push(generateMetadataFile(channel));
   }
 
-  filePromises.concat(generateMessageFiles(channel, args));
+  filePromises.push(generateMessageFiles(channel, args));
 
   return Promise.all(filePromises);
 }
@@ -147,9 +147,10 @@ async function sendFile(channel, filename) {
 // channel with the desired information and a new
 // <Collection> (user tag, participantObj) as
 // [extracted messages collection, participant collection]
-async function generateMessageFiles(channel, args) {
+async function generateMessageFiles(channel, args, inThread=false) {
   let extractedMessages = new Collection();
   let participants = new Collection();
+  let filePromises = [];
 
   // Holds a promise
   let messagesFetched;
@@ -190,7 +191,11 @@ async function generateMessageFiles(channel, args) {
     }
   }
 
-  return [extractedMessages, participants];
+  if (inThread) {
+    return [extractedMessages, participants];
+  } else {
+    return Promise.all(filePromises);
+  }
 }
 
 // Takes a collection of messages and arg array
@@ -251,7 +256,7 @@ async function extractMessageData(messageCollection, args) {
       extractedData.spawnedThread = true;
       extractedData.threadId = message.thread.id;
       const [threadMessages, threadParticipants] =
-          await generateMessageFiles(message.thread, args);
+          await generateMessageFiles(message.thread, args, true);
       // join messages and participants
       extractedMessages = extractedMessages.concat(threadMessages);
       for (const [tag, participantInfo] of threadParticipants) {
