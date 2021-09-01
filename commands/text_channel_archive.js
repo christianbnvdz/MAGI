@@ -49,8 +49,8 @@ function generateArchiveFiles(message, args) {
       completed = generateMetadataFile(message.channel);
       break;
     case 'participants':
-      args = ['text', 'reactions', 'threads'];
-      message.channel.send('Participants argument is currently unsupported.');
+      args = ['text', 'reactions', 'threads', 'participants'];
+      completed = generateChannelFiles(message.channel, args);
       break;
     case 'complete':
       args = ['text', 'reactions', 'stickers', 'attachments', 'threads'];
@@ -79,7 +79,7 @@ function generateArchiveFiles(message, args) {
 function generateChannelFiles(channel, args) {
   let filePromises = [];
 
-  if (!args.includes('messages-only')) {
+  if (!args.includes('messages-only') && !args.includes('participants')) {
     filePromises.push(generateMetadataFile(channel));
   }
 
@@ -173,7 +173,9 @@ async function generateMessageFiles(channel, args, inSubchannel=false) {
     messagesFetched = getChannelMessages(channel, lastSnowflake);
 
     [messageData, userData] = await extractMessageData(fetchedMessageSet, args);
-    preparedMessages = preparedMessages.concat(messageData);
+    if (!args.includes('participants')) {
+      preparedMessages = preparedMessages.concat(messageData);
+    }
     // Will update the participants list with join information if any
     // since messages are from newest to oldest. Can be more efficient.
     for (const [tag, user] of userData) {
@@ -200,7 +202,9 @@ async function generateMessageFiles(channel, args, inSubchannel=false) {
 
   if (fetchedMessageSet.size !== 0) {
     [messageData, userData] = await extractMessageData(fetchedMessageSet, args);
-    preparedMessages = preparedMessages.concat(messageData);
+    if (!args.includes('participants')) {
+      preparedMessages = preparedMessages.concat(messageData);
+    }
     for (const [tag, user] of userData) {
       participants.set(tag, user);
     }
@@ -214,7 +218,6 @@ async function generateMessageFiles(channel, args, inSubchannel=false) {
     }
   }
 
-  // We have to generate the participants file here if applicable
   // Generate if messages-only isnt an argument and we aren't in a subchannel
   if (!inSubchannel && !args.includes('messages-only')) {
     filePromises.push(writeFile(
