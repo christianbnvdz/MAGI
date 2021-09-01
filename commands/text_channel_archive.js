@@ -5,6 +5,7 @@ import process from 'process';
 import {pipeline} from 'stream/promises';
 import {createGzip} from 'zlib';
 import {Buffer} from 'buffer';
+import * as tar from 'tar';
 
 // The maximum number of messages Discord.js lets you fetch at a time
 const MESSAGE_FETCH_LIMIT = 100;
@@ -132,13 +133,25 @@ async function sendArchiveFiles(channel) {
   // At this point, either both exist or none exist
   // If one exists then metadata, participants, and message files exist
   // If not then just message files exist
+  let pageNo = 0;
   if (existsSync('./metadata.json')) {
     // tar.gz the first page with the metadata and participants and send
-    sendFile(channel, 'metadata.json');
-    sendFile(channel, 'participants.json');
+    pageNo = 1;
+    await tar.c(
+      {
+        file: 'archive.tar'
+      },
+      ['metadata.json', 'participants.json', 'messages_0.json']);
+    rm('metadata.json');
+    rm('participants.json');
+    rm('messages_0.json');
+    const source = createReadStream('archive.tar');
+    const destination = createWriteStream('archive.tar.gz');
+    await pipeline(source, gzip, destination);
+    rm('archive.tar');
+    sendFile(channel, 'archive.tar.gz');
   }
   // gz each of the remaining pages and send
-  let pageNo = 0;
   while (existsSync(`./messages_${pageNo}.json`)) {
     const source = createReadStream(`messages_${pageNo}.json`);
     const destination = createWriteStream(`messages_${pageNo}.json.gz`);
