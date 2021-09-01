@@ -1,12 +1,16 @@
 import {Collection} from 'discord.js';
-import {createReadStream, createWriteStream} from 'fs';
+import {createReadStream, createWriteStream, existsSync} from 'fs';
 import {rm, writeFile} from 'fs/promises';
 import process from 'process';
 import {pipeline} from 'stream/promises';
 import {createGzip} from 'zlib';
+import {Buffer} from 'buffer';
+import * as tar from 'tar';
 
 // The maximum number of messages Discord.js lets you fetch at a time
 const MESSAGE_FETCH_LIMIT = 100;
+// The maximum file size, in bytes, that the bot can upload to a channel
+const FILE_UPLOAD_SIZE_LIMIT = 8000000;
 
 const NAME = 'archive';
 const USAGE = `Usage: ${process.env.PREFIX}archive ((help | metadata | participants | complete) | (text (reactions | stickers | attachments | threads)* | whole-messages) messages-only?)`;
@@ -29,85 +33,66 @@ async function execute(message, args) {
     return;
   };
 
-  const invokedTime = (new Date()).toISOString();
-  const [archivedData, filename] = await getArchiveData(message, args);
-
-  sendArchivedFile(
-      message.channel, `${filename}_${invokedTime}.json`, archivedData);
+  await generateArchiveFiles(message, args);
+  sendArchiveFiles(message.channel);
 }
 
 export {NAME, USAGE, RECOGNIZED_ARGS, DESCRIPTION, execute};
 
 // Takes a Message and arg array
-// Returns the archive object and the filename
-// the filename specifies what is getting archived
-async function getArchiveData(message, args) {
-  let archivedData = {};
-  let filename = '';
+// generates all the archive files requested based on args
+// Returns a promise indicating all appropriate files were generated
+function generateArchiveFiles(message, args) {
+  let completed;
 
   switch (args[0]) {
     case 'metadata':
-      archivedData = getMetadata(message.channel);
-      filename = 'metadata';
+      completed = generateMetadataFile(message.channel);
       break;
     case 'participants':
-      args = ['text', 'reactions', 'threads'];
-      archivedData = await getChannelData(message.channel, args);
-      archivedData = archivedData.participantData.participants;
-      filename = 'participants';
+      args = ['text', 'reactions', 'threads', 'participants'];
+      completed = generateChannelFiles(message.channel, args);
       break;
     case 'complete':
       args = ['text', 'reactions', 'stickers', 'attachments', 'threads'];
-      archivedData = await getChannelData(message.channel, args);
-      filename = 'complete_archive';
+      completed = generateChannelFiles(message.channel, args);
       break;
     case 'text':
-      archivedData = await getChannelData(message.channel, args);
-      filename = 'channel_archive';
+      completed = generateChannelFiles(message.channel, args);
       break;
     case 'whole-messages':
-      let onlyMessageData = false;
-      if (args.length === 2) {
-        onlyMessageData = true;
-      }
+      let onlyMessageData = (args.length === 2);
       args = ['text', 'reactions', 'stickers', 'attachments', 'threads'];
-      if (onlyMessageData) {
-        args.push('messages-only');
-      }
-      archivedData = await getChannelData(message.channel, args);
-      filename = 'channel_archive';
+      if (onlyMessageData) args.push('messages-only');
+      completed = generateChannelFiles(message.channel, args);
       break;
     default:
       console.log('none of the above dispatch');
   }
 
-  return [archivedData, filename];
+  return completed;
 }
 
 // Takes a TextChannel and an argument array
-// Decides how to prepare data in a channel based on the args
-// array given. Returns an object holding all the data.
-async function getChannelData(channel, args) {
-  let data;
-  let [messageData, participants] = await prepareMessageData(channel, args);
+// Generates the channel's files based on args
+// Returns a promise that was created by Promise.all()
+// that indicates when files finish generating
+function generateChannelFiles(channel, args) {
+  let filePromises = [];
 
-  if (args.includes('messages-only')) {
-    data = messageData;
-  } else {
-    data = {metadata: getMetadata(channel)};
-    data.participantData = {
-      participantCount: participants.size,
-      participants: participants
-    };
-    data.messageData = {messageCount: messageData.size, messages: messageData};
+  if (!args.includes('messages-only') && !args.includes('participants')) {
+    filePromises.push(generateMetadataFile(channel));
   }
 
-  return data;
+  filePromises.push(generateMessageFiles(channel, args));
+
+  return Promise.all(filePromises);
 }
 
 // Takes a TextChannel as input
-// Returns an object with metadata of the guild and channel
-function getMetadata(channel) {
+// Generates the metadata json file for the channel
+// Returns a promise indicating the end of file generation
+function generateMetadataFile(channel) {
   const metadata = {
     guildId: channel.guild.id,
     guildName: channel.guild.name,
@@ -121,30 +106,69 @@ function getMetadata(channel) {
     channelCreationDate: channel.createdAt,
     channelNsfw: channel.nsfw
   };
-  return metadata;
+
+  return writeFile('metadata.json', JSON.stringify(metadata), 'utf8');
 }
 
 // Takes a TextChannel
-// Takes a string consisting of the filename (including extension)
-// Takes the archive object to send in that file
-// Sends the information in the archive object to the channel
-// after compressing using gzip
-async function sendArchivedFile(channel, filename, archiveObj) {
+// Sends the information in the archive files to the channel
+// after compressing using gzip and tarring if need be
+// Deletes files after sending to channel
+async function sendArchiveFiles(channel) {
   const gzip = createGzip();
-  const ext = '.gz';
+  const generatedMetadata = existsSync('./metadata.json');
+  const generatedParticipants = existsSync('./participants.json');
+  // If the metadata.json exists then either we just wanted the metadata or
+  // we have metadata, participants, and message files generated.
+  // If it's just the metadata.json that is generated then send as is
+  if (generatedMetadata && !generatedParticipants) {
+    sendFile(channel, 'metadata.json');
+    return;
+  }
+  // If only participants.json was generated, same as above
+  if (generatedParticipants && !generatedMetadata) {
+    sendFile(channel, 'participants.json');
+    return;
+  }
+  // At this point, either both exist or none exist
+  // If one exists then metadata, participants, and message files exist
+  // If not then just message files exist
+  let pageNo = 0;
+  if (existsSync('./metadata.json')) {
+    // tar.gz the first page with the metadata and participants and send
+    pageNo = 1;
+    await tar.c(
+      {
+        file: 'archive.tar'
+      },
+      ['metadata.json', 'participants.json', 'messages_0.json']);
+    rm('metadata.json');
+    rm('participants.json');
+    rm('messages_0.json');
+    const source = createReadStream('archive.tar');
+    const destination = createWriteStream('archive.tar.gz');
+    await pipeline(source, gzip, destination);
+    rm('archive.tar');
+    sendFile(channel, 'archive.tar.gz');
+  }
+  // gz each of the remaining pages and send
+  while (existsSync(`./messages_${pageNo}.json`)) {
+    const source = createReadStream(`messages_${pageNo}.json`);
+    const destination = createWriteStream(`messages_${pageNo}.json.gz`);
+    await pipeline(source, gzip, destination);
+    rm(`messages_${pageNo}.json`);
+    sendFile(channel, `messages_${pageNo}.json.gz`);
+    ++pageNo;
+  }
+}
 
-  await writeFile(filename, JSON.stringify(archiveObj), 'utf8');
-
-  const source = createReadStream(filename);
-  const destination = createWriteStream(filename + ext);
-
-  await pipeline(source, gzip, destination);
-
+// Takes a TextChannel and filename
+// Sends the specified file to the channel
+// Deletes files after sending them
+async function sendFile(channel, filename) {
   await channel.send(
-      {files: [{attachment: `./${filename + ext}`, name: filename + ext}]});
-
+      {files: [{attachment: `./${filename}`, name: filename}]});
   rm(filename);
-  rm(filename + ext);
 }
 
 // Takes a TextChannel and args as input
@@ -153,9 +177,12 @@ async function sendArchivedFile(channel, filename, archiveObj) {
 // channel with the desired information and a new
 // <Collection> (user tag, participantObj) as
 // [extracted messages collection, participant collection]
-async function prepareMessageData(channel, args) {
-  let extractedMessages = new Collection();
+// If we are not in a subchannel then we return a promise indicating
+// whether all the files have been generated or not.
+async function generateMessageFiles(channel, args, inSubchannel=false) {
+  let preparedMessages = new Collection();
   let participants = new Collection();
+  let filePromises = [];
 
   // Holds a promise
   let messagesFetched;
@@ -165,38 +192,70 @@ async function prepareMessageData(channel, args) {
   // For holding extracted data of the fetchedMessageSet
   let messageData;
   let userData;
+  // Used in message page generation
+  let preparedMessagesJson;
+  let page = 0;
 
   do {
     messagesFetched = getChannelMessages(channel, lastSnowflake);
 
     [messageData, userData] = await extractMessageData(fetchedMessageSet, args);
-
-    messagesFetched.then((messages) => {
-      fetchedMessageSet = messages;
-      lastSnowflake = fetchedMessageSet.lastKey();
-    });
-
-    // Combine message data and user data
-    extractedMessages = extractedMessages.concat(messageData);
-    // Will update the participants list with join information
+    if (!args.includes('participants')) {
+      preparedMessages = preparedMessages.concat(messageData);
+    }
+    // Will update the participants list with join information if any
     // since messages are from newest to oldest. Can be more efficient.
     for (const [tag, user] of userData) {
       participants.set(tag, user);
     }
 
-    await messagesFetched;
+    // The assumption is that extracted batches are less than 1MB.
+    // A very lax way of handling this. A more sophisticated approach can be
+    // done but for our server's purpose, we don't need more than this.
+    if (!inSubchannel) {
+      preparedMessagesJson = JSON.stringify(preparedMessages);
+      if (Buffer.byteLength(preparedMessagesJson, 'utf8') >= 
+              FILE_UPLOAD_SIZE_LIMIT) {
+        filePromises.push(writeFile(
+	    `messages_${page}.json`, preparedMessagesJson, 'utf8'));
+	++page;
+	fetchedMessageSet.clear();
+      }
+    }
 
+    fetchedMessageSet = await messagesFetched;
+    lastSnowflake = fetchedMessageSet.lastKey();
   } while (fetchedMessageSet.size === MESSAGE_FETCH_LIMIT);
 
   if (fetchedMessageSet.size !== 0) {
     [messageData, userData] = await extractMessageData(fetchedMessageSet, args);
-    extractedMessages = extractedMessages.concat(messageData);
+    if (!args.includes('participants')) {
+      preparedMessages = preparedMessages.concat(messageData);
+    }
     for (const [tag, user] of userData) {
       participants.set(tag, user);
     }
   }
 
-  return [extractedMessages, participants];
+  if (!inSubchannel) {
+    preparedMessagesJson = JSON.stringify(preparedMessages);
+    if (preparedMessagesJson.length > 2) {
+      filePromises.push(writeFile(
+          `messages_${page}.json`, preparedMessagesJson, 'utf8'));
+    }
+  }
+
+  // Generate if messages-only isnt an argument and we aren't in a subchannel
+  if (!inSubchannel && !args.includes('messages-only')) {
+    filePromises.push(writeFile(
+	'participants.json', JSON.stringify(participants), 'utf8'));
+  }
+
+  if (inSubchannel) {
+    return [preparedMessages, participants];
+  } else {
+    return Promise.all(filePromises);
+  }
 }
 
 // Takes a collection of messages and arg array
@@ -257,7 +316,7 @@ async function extractMessageData(messageCollection, args) {
       extractedData.spawnedThread = true;
       extractedData.threadId = message.thread.id;
       const [threadMessages, threadParticipants] =
-          await prepareMessageData(message.thread, args);
+          await generateMessageFiles(message.thread, args, true);
       // join messages and participants
       extractedMessages = extractedMessages.concat(threadMessages);
       for (const [tag, participantInfo] of threadParticipants) {
