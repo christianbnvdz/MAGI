@@ -1,11 +1,11 @@
+import {Buffer} from 'buffer';
 import {Collection} from 'discord.js';
 import {createReadStream, createWriteStream, existsSync} from 'fs';
 import {rm, writeFile} from 'fs/promises';
 import process from 'process';
 import {pipeline} from 'stream/promises';
-import {createGzip} from 'zlib';
-import {Buffer} from 'buffer';
 import * as tar from 'tar';
+import {createGzip} from 'zlib';
 
 // The maximum number of messages Discord.js lets you fetch at a time
 const MESSAGE_FETCH_LIMIT = 100;
@@ -24,7 +24,6 @@ const RECOGNIZED_ARGS = [
   'stickers', 'attachments', 'threads', 'whole-messages', 'messages-only'
 ];
 const DESCRIPTION = 'Creates a .json representation of what you choose to archive and uploads it to the same channel that the command was executed in.\n\nmetadata - only captures guild and channel information.\nparticipants - only captures information about who has ever participated in the channel.\ncomplete - captures everything (see Capture Selection).\nhelp - will send the usage and this message to the channel.\n\nCapture Selection:\ntext - will capture only the textual content for each message. Follow up with "reactions", "stickers", "attachments", and/or "threads" to choose what else to capture.\nwhole-messages - captures everything.\nmessages-only - used to ignore metadata and participants since they are captured by default.\n\nOnly the guild owner can execute this command.';
-
 async function execute(message, args) {
   if (message.guild.ownerId !== message.author.id) {
     message.channel.send('Only the guild owner can execute this command.');
@@ -138,7 +137,9 @@ async function sendArchiveFiles(channel) {
 
   if (existsSync(METADATA_FILENAME)) {
     pageNo = 1;
-    await tar.c({file: TAR_FILENAME}, [METADATA_FILENAME, PARTICIPANTS_FILENAME, FIRST_MESSAGE_PAGE_FILENAME]);
+    await tar.c({file: TAR_FILENAME}, [
+      METADATA_FILENAME, PARTICIPANTS_FILENAME, FIRST_MESSAGE_PAGE_FILENAME
+    ]);
     rm(METADATA_FILENAME);
     rm(PARTICIPANTS_FILENAME);
     rm(FIRST_MESSAGE_PAGE_FILENAME);
@@ -162,8 +163,7 @@ async function sendArchiveFiles(channel) {
 // Takes a TextChannel and filename
 // Sends the specified file to the channel and deletes it after sending
 async function sendFile(channel, filename) {
-  await channel.send(
-      {files: [{attachment: `./${filename}`, name: filename}]});
+  await channel.send({files: [{attachment: `./${filename}`, name: filename}]});
   rm(filename);
 }
 
@@ -174,7 +174,7 @@ async function sendFile(channel, filename) {
 // channel with the desired information and a new
 // <Collection> (user tag, participantObj) of participants in the channel as
 // [extracted messages collection, participant collection]
-async function generateMessageFiles(channel, args, inSubchannel=false) {
+async function generateMessageFiles(channel, args, inSubchannel = false) {
   let preparedMessages = new Collection();
   let participants = new Collection();
   let filePromises = [];
@@ -209,12 +209,12 @@ async function generateMessageFiles(channel, args, inSubchannel=false) {
     // done but for our server's purpose we don't need more than this.
     if (!inSubchannel) {
       preparedMessagesJson = JSON.stringify(preparedMessages);
-      if (Buffer.byteLength(preparedMessagesJson, 'utf8') >= 
-              FILE_UPLOAD_SIZE_LIMIT) {
-        filePromises.push(writeFile(
-	    `messages_${page}.json`, preparedMessagesJson, 'utf8'));
-	++page;
-	fetchedMessageSet.clear();
+      if (Buffer.byteLength(preparedMessagesJson, 'utf8') >=
+          FILE_UPLOAD_SIZE_LIMIT) {
+        filePromises.push(
+            writeFile(`messages_${page}.json`, preparedMessagesJson, 'utf8'));
+        ++page;
+        fetchedMessageSet.clear();
       }
     }
 
@@ -235,14 +235,14 @@ async function generateMessageFiles(channel, args, inSubchannel=false) {
   if (!inSubchannel) {
     preparedMessagesJson = JSON.stringify(preparedMessages);
     if (preparedMessagesJson.length > 2) {
-      filePromises.push(writeFile(
-          `messages_${page}.json`, preparedMessagesJson, 'utf8'));
+      filePromises.push(
+          writeFile(`messages_${page}.json`, preparedMessagesJson, 'utf8'));
     }
   }
 
   if (!inSubchannel && !args.includes('messages-only')) {
-    filePromises.push(writeFile(
-	PARTICIPANTS_FILENAME, JSON.stringify(participants), 'utf8'));
+    filePromises.push(
+        writeFile(PARTICIPANTS_FILENAME, JSON.stringify(participants), 'utf8'));
   }
 
   if (inSubchannel) {
@@ -447,13 +447,15 @@ function isValidCommand(args, channel) {
   }
 
   if (args.includes('text') && args.includes('whole-messages')) {
-    channel.send(`"text" and "whole-messages" are mutually exclusive.\n${USAGE}`);
+    channel.send(
+        `"text" and "whole-messages" are mutually exclusive.\n${USAGE}`);
     return false;
   }
 
   if (args[0] === 'whole-messages' && args.length >= 2) {
     if (args.length > 2) {
-      channel.send(`"whole-messages" can't have more than 1 argument.\n${USAGE}`);
+      channel.send(
+          `"whole-messages" can't have more than 1 argument.\n${USAGE}`);
       return false;
     }
 
