@@ -180,7 +180,7 @@ async function sendFile(channel, filename) {
 // <Collection> (user tag, participantObj) of participants in the channel as
 // [extracted messages collection, participant collection]
 async function generateMessageFiles(channel, args, inSubchannel = false) {
-  const preparedMessages = new Collection();
+  let preparedMessages = new Collection();
   const participants = new Collection();
   const filePromises = [];
 
@@ -223,9 +223,9 @@ async function generateMessageFiles(channel, args, inSubchannel = false) {
   if (fetchedMessageSet.size !== 0) {
     const [messages, users] = await extractMessageData(fetchedMessageSet, args);
     if (!args.includes('participants'))
-      preparedMessages = preparedMessages.concat(messageData);
+      preparedMessages = preparedMessages.concat(messages);
 
-    for (const [tag, user] of userData) participants.set(tag, user);
+    for (const [tag, user] of users) participants.set(tag, user);
   }
 
   if (!inSubchannel) {
@@ -250,7 +250,7 @@ async function generateMessageFiles(channel, args, inSubchannel = false) {
 // <Collection> (user tag, participantObj) as
 // [extracted messages collection, participant collection]
 async function extractMessageData(messageCollection, args) {
-  const extractedMessages = new Collection();
+  let extractedMessages = new Collection();
   const participants = new Collection();
 
   for (const [snowflake, message] of messageCollection) {
