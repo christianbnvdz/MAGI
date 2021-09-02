@@ -189,31 +189,24 @@ async function generateMessageFiles(channel, args, inSubchannel = false) {
   // The actual messages fetched
   let fetchedMessageSet = new Collection();
   let lastSnowflake = null;
-  // For holding extracted data of the fetchedMessageSet
-  let messageData;
-  let userData;
-  // Used in message page generation
-  let preparedMessagesJson;
+  // Used in page generation
   let page = 0;
 
   do {
     messagesFetched = getChannelMessages(channel, lastSnowflake);
 
-    [messageData, userData] = await extractMessageData(fetchedMessageSet, args);
-    if (!args.includes('participants')) {
-      preparedMessages = preparedMessages.concat(messageData);
-    }
+    const [messages, users] = await extractMessageData(fetchedMessageSet, args);
+    if (!args.includes('participants'))
+      preparedMessages = preparedMessages.concat(messages);
     // Will update the participants list with join information if any
     // since messages are from newest to oldest. Can be more efficient.
-    for (const [tag, user] of userData) {
-      participants.set(tag, user);
-    }
+    for (const [tag, user] of users) participants.set(tag, user);
 
     // The assumption is that extracted batches in JSON are less than 1MB.
     // A very lax way of handling this. A more sophisticated approach can be
     // done but for our server's purpose we don't need more than this.
     if (!inSubchannel) {
-      preparedMessagesJson = JSON.stringify(preparedMessages);
+      const preparedMessagesJson = JSON.stringify(preparedMessages);
       if (Buffer.byteLength(preparedMessagesJson, 'utf8') >=
           FILE_UPLOAD_SIZE_LIMIT) {
         filePromises.push(
@@ -228,27 +221,23 @@ async function generateMessageFiles(channel, args, inSubchannel = false) {
   } while (fetchedMessageSet.size === MESSAGE_FETCH_LIMIT);
 
   if (fetchedMessageSet.size !== 0) {
-    [messageData, userData] = await extractMessageData(fetchedMessageSet, args);
-    if (!args.includes('participants')) {
+    const [messages, users] = await extractMessageData(fetchedMessageSet, args);
+    if (!args.includes('participants'))
       preparedMessages = preparedMessages.concat(messageData);
-    }
-    for (const [tag, user] of userData) {
-      participants.set(tag, user);
-    }
+
+    for (const [tag, user] of userData) participants.set(tag, user);
   }
 
   if (!inSubchannel) {
-    preparedMessagesJson = JSON.stringify(preparedMessages);
-    if (preparedMessagesJson.length > 2) {
+    const preparedMessagesJson = JSON.stringify(preparedMessages);
+    if (preparedMessagesJson.length > 2)
       filePromises.push(
           writeFile(`messages_${page}.json`, preparedMessagesJson, 'utf8'));
-    }
   }
 
-  if (!inSubchannel && !args.includes('messages-only')) {
+  if (!inSubchannel && !args.includes('messages-only'))
     filePromises.push(
         writeFile(PARTICIPANTS_FILENAME, JSON.stringify(participants), 'utf8'));
-  }
 
   return (!inSubchannel) ? Promise.all(filePromises) :
                            [preparedMessages, participants];
