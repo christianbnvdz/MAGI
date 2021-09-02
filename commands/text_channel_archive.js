@@ -132,7 +132,6 @@ async function sendArchiveFiles(channel) {
   // At this point, either both exist or none exist
   // If one exists then message files exist: messages-only wasn't passed
   // If not then just message files exist: messages-only was passed
-  const gzip = createGzip();
   let pageNo = 0;
 
   if (generatedMetadata) {
