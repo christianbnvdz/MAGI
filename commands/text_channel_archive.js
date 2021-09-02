@@ -276,39 +276,31 @@ async function extractMessageData(messageCollection, args) {
       text: message.content
     };
 
-    if (message.pinned) {
-      extractedData.pinned = true;
-    }
+    if (message.pinned) extractedData.pinned = true;
 
-    if (message.type === 'REPLY') {
-      // Even if the message was deleted the snowflake is still there
+    // Even if the message was deleted the snowflake is still there
+    if (message.type === 'REPLY')
       extractedData.replyingTo = message.reference.messageId;
-    }
 
     // Only true if it's a message in a thread
     if (message.channel.type === 'GUILD_NEWS_THREAD' ||
         message.channel.type === 'GUILD_PUBLIC_THREAD' ||
-        message.channel.type === 'GUILD_PRIVATE_THREAD') {
+        message.channel.type === 'GUILD_PRIVATE_THREAD')
       extractedData.threadId = message.channelId;
-    }
 
-    if (args.includes('reactions')) {
+    if (args.includes('reactions'))
       extractedData.reactions = [await getReactions(message, participants)];
-    }
 
-    if (args.includes('stickers')) {
+    if (args.includes('stickers'))
       extractedData.stickers = getStickers(message);
-    }
 
-    if (args.includes('attachments')) {
+    if (args.includes('attachments'))
       extractedData.attachments = getAttachments(message);
-    }
 
     extractedMessages.set(message.id, extractedData);
     updateUserCollection(participants, message.author);
-    if (message.type === 'GUILD_MEMBER_JOIN') {
+    if (message.type === 'GUILD_MEMBER_JOIN')
       participants.get(message.author.tag).joined = message.createdAt;
-    }
 
     // This will never be true for messages that are in threads
     if (args.includes('threads') && message.hasThread) {
@@ -317,9 +309,8 @@ async function extractMessageData(messageCollection, args) {
       const [threadMessages, threadParticipants] =
           await generateMessageFiles(message.thread, args, true);
       extractedMessages = extractedMessages.concat(threadMessages);
-      for (const [tag, participantInfo] of threadParticipants) {
+      for (const [tag, participantInfo] of threadParticipants)
         participants.set(tag, participantInfo);
-      }
     }
   }
 
