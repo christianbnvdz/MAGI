@@ -40,7 +40,7 @@ async function execute(message, args) {
 export {NAME, USAGE, RECOGNIZED_ARGS, DESCRIPTION, execute};
 
 // Takes a Message and arg array
-// generates all the archive files requested based on args
+// Generates all the archive files requested based on args
 // Returns a promise indicating all appropriate files were generated
 function generateArchiveFiles(message, args) {
   let completed;
@@ -75,8 +75,7 @@ function generateArchiveFiles(message, args) {
 
 // Takes a TextChannel and an argument array
 // Generates the channel's files based on args
-// Returns a promise that was created by Promise.all()
-// that indicates when files finish generating
+// Returns a promise that indicates when files finish generating
 function generateChannelFiles(channel, args) {
   let filePromises = [];
 
@@ -91,7 +90,7 @@ function generateChannelFiles(channel, args) {
 
 // Takes a TextChannel as input
 // Generates the metadata json file for the channel
-// Returns a promise indicating the end of file generation
+// Returns a promise indicating the end of metadata file generation
 function generateMetadataFile(channel) {
   const metadata = {
     guildId: channel.guild.id,
@@ -111,31 +110,27 @@ function generateMetadataFile(channel) {
 }
 
 // Takes a TextChannel
-// Sends the information in the archive files to the channel
-// after compressing using gzip and tarring if need be
-// Deletes files after sending to channel
+// Sends the archive files to the channel after gzip and tar if need be
+// and deletes files after sending to channel
 async function sendArchiveFiles(channel) {
-  const gzip = createGzip();
   const generatedMetadata = existsSync('./metadata.json');
   const generatedParticipants = existsSync('./participants.json');
-  // If the metadata.json exists then either we just wanted the metadata or
-  // we have metadata, participants, and message files generated.
-  // If it's just the metadata.json that is generated then send as is
+  // If only metadata.json was generated
   if (generatedMetadata && !generatedParticipants) {
     sendFile(channel, 'metadata.json');
     return;
   }
-  // If only participants.json was generated, same as above
+  // If only participants.json was generated
   if (generatedParticipants && !generatedMetadata) {
     sendFile(channel, 'participants.json');
     return;
   }
   // At this point, either both exist or none exist
-  // If one exists then metadata, participants, and message files exist
-  // If not then just message files exist
+  // If one exists then message files exist: messages-only wasn't passed
+  // If not then just message files exist: messages-only was passed
+  const gzip = createGzip();
   let pageNo = 0;
   if (existsSync('./metadata.json')) {
-    // tar.gz the first page with the metadata and participants and send
     pageNo = 1;
     await tar.c(
       {
@@ -151,7 +146,6 @@ async function sendArchiveFiles(channel) {
     rm('archive.tar');
     sendFile(channel, 'archive.tar.gz');
   }
-  // gz each of the remaining pages and send
   while (existsSync(`./messages_${pageNo}.json`)) {
     const source = createReadStream(`messages_${pageNo}.json`);
     const destination = createWriteStream(`messages_${pageNo}.json.gz`);
@@ -163,22 +157,20 @@ async function sendArchiveFiles(channel) {
 }
 
 // Takes a TextChannel and filename
-// Sends the specified file to the channel
-// Deletes files after sending them
+// Sends the specified file to the channel and deletes it after sending
 async function sendFile(channel, filename) {
   await channel.send(
       {files: [{attachment: `./${filename}`, name: filename}]});
   rm(filename);
 }
 
-// Takes a TextChannel and args as input
-// Also extracts info about all those who have ever sent a message
+// Takes a TextChannel, arg array, and a bool denoting if this is a subchannel
+// Generates the message files and returns a promise indicating their generation
+// if this is not a subchannel. If it is a subchannel:
 // Returns a <Collection> (snowflake, messageObj) holding all messages in the
 // channel with the desired information and a new
-// <Collection> (user tag, participantObj) as
+// <Collection> (user tag, participantObj) of participants in the channel as
 // [extracted messages collection, participant collection]
-// If we are not in a subchannel then we return a promise indicating
-// whether all the files have been generated or not.
 async function generateMessageFiles(channel, args, inSubchannel=false) {
   let preparedMessages = new Collection();
   let participants = new Collection();
@@ -209,9 +201,9 @@ async function generateMessageFiles(channel, args, inSubchannel=false) {
       participants.set(tag, user);
     }
 
-    // The assumption is that extracted batches are less than 1MB.
+    // The assumption is that extracted batches in JSON are less than 1MB.
     // A very lax way of handling this. A more sophisticated approach can be
-    // done but for our server's purpose, we don't need more than this.
+    // done but for our server's purpose we don't need more than this.
     if (!inSubchannel) {
       preparedMessagesJson = JSON.stringify(preparedMessages);
       if (Buffer.byteLength(preparedMessagesJson, 'utf8') >= 
@@ -245,7 +237,6 @@ async function generateMessageFiles(channel, args, inSubchannel=false) {
     }
   }
 
-  // Generate if messages-only isnt an argument and we aren't in a subchannel
   if (!inSubchannel && !args.includes('messages-only')) {
     filePromises.push(writeFile(
 	'participants.json', JSON.stringify(participants), 'utf8'));
@@ -258,7 +249,7 @@ async function generateMessageFiles(channel, args, inSubchannel=false) {
   }
 }
 
-// Takes a collection of messages and arg array
+// Takes a <Collection> (snowflake, Message) and an arg array
 // Extracts data specified in args from each message
 // in the collection.
 // Returns a <Collection> (snowflake, messageObj) and
@@ -269,7 +260,6 @@ async function extractMessageData(messageCollection, args) {
   let participants = new Collection();
 
   for (const [snowflake, message] of messageCollection) {
-    // Basic messageData
     let extractedData = {
       id: message.id,
       author: message.author.tag,
@@ -317,7 +307,6 @@ async function extractMessageData(messageCollection, args) {
       extractedData.threadId = message.thread.id;
       const [threadMessages, threadParticipants] =
           await generateMessageFiles(message.thread, args, true);
-      // join messages and participants
       extractedMessages = extractedMessages.concat(threadMessages);
       for (const [tag, participantInfo] of threadParticipants) {
         participants.set(tag, participantInfo);
@@ -333,7 +322,7 @@ async function extractMessageData(messageCollection, args) {
 // sticker objects that hold info about each sticker
 function getStickers(message) {
   let stickers = [];
-  // Not sure how a message can have multiple stickers but it may happen
+
   for (const [snowflake, sticker] of message.stickers) {
     let stickerInfo = {
       id: sticker.id,
@@ -353,7 +342,7 @@ function getStickers(message) {
 // array of attachment objects that hold info about that attachment
 function getAttachments(message) {
   let attachments = [];
-  // Mobile users can send multiple attachments per message
+
   for (const [snowflake, attachment] of message.attachments) {
     let attachmentInfo = {
       id: attachment.id,
@@ -373,7 +362,7 @@ function getAttachments(message) {
 // Also takes in a Collection of participants to update
 // in case a new participant is found.
 // Extracts reaction data and returns an object containing
-// Each reaction and the users that reacted with it
+// each reaction and the users that reacted with it
 async function getReactions(message, participants) {
   let reactionData = {};
   let reactions = message.reactions.cache;
@@ -386,8 +375,7 @@ async function getReactions(message, participants) {
   return reactionData;
 }
 
-// Takes a ReactionUserManager
-// Also takes in a Collection of Participants
+// Takes a ReactionUserManager and a Collection
 // Returns an array contaning the tag of each user who
 // interacted with the reaction. Currently only a max of 100
 // users are gathered. No more than that will be captured
@@ -403,8 +391,8 @@ async function getReactors(reactionManager, participants) {
   return userData;
 }
 
-// Takes a Collection of participants and a User
-// Checks to see if the User is in the participants collection
+// Takes a Collection and a User
+// Checks to see if the User tag is in the participants collection
 // and adds them to it if they aren't
 // MODIFIES THE REFERENCED COLLECTION
 function updateUserCollection(participantCollection, user) {
