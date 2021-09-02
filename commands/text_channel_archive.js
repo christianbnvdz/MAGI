@@ -420,8 +420,7 @@ function updateUserCollection(participantCollection, user) {
 }
 
 // Takes a TextChannel and an optional snowflake
-// Get a maximum of 100 messages in a channel starting at the
-// specified snowflake.
+// Gets messages from the channel sent before the specified snowflake.
 // If snowflake is null then starts from most recent message in the channel.
 // Returns a Promise of <Collection> (snowflake, message)
 // Messages in returned collection are from newest to oldest
