@@ -11,6 +11,11 @@ import * as tar from 'tar';
 const MESSAGE_FETCH_LIMIT = 100;
 // The maximum file size, in bytes, that the bot can upload to a channel
 const FILE_UPLOAD_SIZE_LIMIT = 8000000;
+// Filenames for known files
+const METADATA_FILENAME = 'metadata.json';
+const PARTICIPANTS_FILENAME = 'participants.json';
+const FIRST_MESSAGE_PAGE_FILENAME = 'messages_0.json';
+const TAR_FILENAME = 'archive.tar';
 
 const NAME = 'archive';
 const USAGE = `Usage: ${process.env.PREFIX}archive ((help | metadata | participants | complete) | (text (reactions | stickers | attachments | threads)* | whole-messages) messages-only?)`;
@@ -89,7 +94,7 @@ function generateChannelFiles(channel, args) {
 }
 
 // Takes a TextChannel as input
-// Generates the metadata json file for the channel
+// Generates the metadata file for the channel
 // Returns a promise indicating the end of metadata file generation
 function generateMetadataFile(channel) {
   const metadata = {
@@ -106,23 +111,23 @@ function generateMetadataFile(channel) {
     channelNsfw: channel.nsfw
   };
 
-  return writeFile('metadata.json', JSON.stringify(metadata), 'utf8');
+  return writeFile(METADATA_FILENAME, JSON.stringify(metadata), 'utf8');
 }
 
 // Takes a TextChannel
 // Sends the archive files to the channel after gzip and tar if need be
 // and deletes files after sending to channel
 async function sendArchiveFiles(channel) {
-  const generatedMetadata = existsSync('./metadata.json');
-  const generatedParticipants = existsSync('./participants.json');
-  // If only metadata.json was generated
+  const generatedMetadata = existsSync(METADATA_FILENAME);
+  const generatedParticipants = existsSync(PARTICIPANTS_FILENAME);
+  // If only metadata file was generated
   if (generatedMetadata && !generatedParticipants) {
-    sendFile(channel, 'metadata.json');
+    sendFile(channel, METADATA_FILENAME);
     return;
   }
-  // If only participants.json was generated
+  // If only participants file was generated
   if (generatedParticipants && !generatedMetadata) {
-    sendFile(channel, 'participants.json');
+    sendFile(channel, PARTICIPANTS_FILENAME);
     return;
   }
   // At this point, either both exist or none exist
@@ -130,22 +135,20 @@ async function sendArchiveFiles(channel) {
   // If not then just message files exist: messages-only was passed
   const gzip = createGzip();
   let pageNo = 0;
-  if (existsSync('./metadata.json')) {
+
+  if (existsSync(METADATA_FILENAME)) {
     pageNo = 1;
-    await tar.c(
-      {
-        file: 'archive.tar'
-      },
-      ['metadata.json', 'participants.json', 'messages_0.json']);
-    rm('metadata.json');
-    rm('participants.json');
-    rm('messages_0.json');
-    const source = createReadStream('archive.tar');
-    const destination = createWriteStream('archive.tar.gz');
+    await tar.c({file: TAR_FILENAME}, [METADATA_FILENAME, PARTICIPANTS_FILENAME, FIRST_MESSAGE_PAGE_FILENAME]);
+    rm(METADATA_FILENAME);
+    rm(PARTICIPANTS_FILENAME);
+    rm(FIRST_MESSAGE_PAGE_FILENAME);
+    const source = createReadStream(TAR_FILENAME);
+    const destination = createWriteStream(`${TAR_FILENAME}.gz`);
     await pipeline(source, gzip, destination);
-    rm('archive.tar');
-    sendFile(channel, 'archive.tar.gz');
+    rm(TAR_FILENAME);
+    sendFile(channel, `${TAR_FILENAME}.gz`);
   }
+
   while (existsSync(`./messages_${pageNo}.json`)) {
     const source = createReadStream(`messages_${pageNo}.json`);
     const destination = createWriteStream(`messages_${pageNo}.json.gz`);
@@ -239,7 +242,7 @@ async function generateMessageFiles(channel, args, inSubchannel=false) {
 
   if (!inSubchannel && !args.includes('messages-only')) {
     filePromises.push(writeFile(
-	'participants.json', JSON.stringify(participants), 'utf8'));
+	PARTICIPANTS_FILENAME, JSON.stringify(participants), 'utf8'));
   }
 
   if (inSubchannel) {
