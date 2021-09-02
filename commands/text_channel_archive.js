@@ -65,7 +65,7 @@ function generateArchiveFiles(message, args) {
       completed = generateChannelFiles(message.channel, args);
       break;
     case 'whole-messages':
-      let onlyMessageData = (args.length === 2);
+      const onlyMessageData = (args.length === 2);
       args = ['text', 'reactions', 'stickers', 'attachments', 'threads'];
       if (onlyMessageData) args.push('messages-only');
       completed = generateChannelFiles(message.channel, args);
