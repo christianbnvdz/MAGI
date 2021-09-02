@@ -81,11 +81,10 @@ function generateArchiveFiles(message, args) {
 // Generates the channel's files based on args
 // Returns a promise that indicates when files finish generating
 function generateChannelFiles(channel, args) {
-  let filePromises = [];
+  const filePromises = [];
 
-  if (!args.includes('messages-only') && !args.includes('participants')) {
+  if (!args.includes('messages-only') && !args.includes('participants'))
     filePromises.push(generateMetadataFile(channel));
-  }
 
   filePromises.push(generateMessageFiles(channel, args));
 
@@ -161,7 +160,7 @@ async function compressFile(filename) {
   const gzip = createGzip();
   const source = createReadStream(filename);
   const destination = createWriteStream(`${filename}.gz`);
-  let finished = await pipeline(source, gzip, destination);
+  const finished = await pipeline(source, gzip, destination);
   rm(filename);
   return finished;
 }
@@ -181,9 +180,9 @@ async function sendFile(channel, filename) {
 // <Collection> (user tag, participantObj) of participants in the channel as
 // [extracted messages collection, participant collection]
 async function generateMessageFiles(channel, args, inSubchannel = false) {
-  let preparedMessages = new Collection();
-  let participants = new Collection();
-  let filePromises = [];
+  const preparedMessages = new Collection();
+  const participants = new Collection();
+  const filePromises = [];
 
   // Holds a promise
   let messagesFetched;
@@ -251,11 +250,8 @@ async function generateMessageFiles(channel, args, inSubchannel = false) {
         writeFile(PARTICIPANTS_FILENAME, JSON.stringify(participants), 'utf8'));
   }
 
-  if (inSubchannel) {
-    return [preparedMessages, participants];
-  } else {
-    return Promise.all(filePromises);
-  }
+  return (!inSubchannel) ? Promise.all(filePromises) :
+                           [preparedMessages, participants];
 }
 
 // Takes a <Collection> (snowflake, Message) and an arg array
@@ -265,11 +261,11 @@ async function generateMessageFiles(channel, args, inSubchannel = false) {
 // <Collection> (user tag, participantObj) as
 // [extracted messages collection, participant collection]
 async function extractMessageData(messageCollection, args) {
-  let extractedMessages = new Collection();
-  let participants = new Collection();
+  const extractedMessages = new Collection();
+  const participants = new Collection();
 
   for (const [snowflake, message] of messageCollection) {
-    let extractedData = {
+    const extractedData = {
       id: message.id,
       author: message.author.tag,
       time: message.createdAt,
@@ -321,10 +317,10 @@ async function extractMessageData(messageCollection, args) {
 // Extracts the stickers from a message and returns an array of
 // sticker objects that hold info about each sticker
 function getStickers(message) {
-  let stickers = [];
+  const stickers = [];
 
   for (const [snowflake, sticker] of message.stickers) {
-    let stickerInfo = {
+    const stickerInfo = {
       id: sticker.id,
       name: sticker.name,
       url: sticker.url,
@@ -341,10 +337,10 @@ function getStickers(message) {
 // Extracts the attachments from a message and returns an
 // array of attachment objects that hold info about that attachment
 function getAttachments(message) {
-  let attachments = [];
+  const attachments = [];
 
   for (const [snowflake, attachment] of message.attachments) {
-    let attachmentInfo = {
+    const attachmentInfo = {
       id: attachment.id,
       spoiler: attachment.spoiler,
       name: attachment.name,
@@ -364,8 +360,8 @@ function getAttachments(message) {
 // Extracts reaction data and returns an object containing
 // each reaction and the users that reacted with it
 async function getReactions(message, participants) {
-  let reactionData = {};
-  let reactions = message.reactions.cache;
+  const reactionData = {};
+  const reactions = message.reactions.cache;
 
   for (const [emojiString, reaction] of reactions) {
     reactionData[reaction.emoji.name] =
@@ -380,8 +376,8 @@ async function getReactions(message, participants) {
 // interacted with the reaction. Currently only a max of 100
 // users are gathered. No more than that will be captured
 async function getReactors(reactionManager, participants) {
-  let userData = [];
-  let users = await reactionManager.fetch();
+  const userData = [];
+  const users = await reactionManager.fetch();
 
   users.each((user) => {
     userData.push(user.tag);
@@ -397,7 +393,7 @@ async function getReactors(reactionManager, participants) {
 // MODIFIES THE REFERENCED COLLECTION
 function updateUserCollection(participantCollection, user) {
   if (!participantCollection.has(user.tag)) {
-    let participant = {
+    const participant = {
       id: user.id,
       tag: user.tag,
       pfp: user.displayAvatarURL({dynamic: true})
