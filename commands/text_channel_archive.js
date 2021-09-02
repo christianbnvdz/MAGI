@@ -431,13 +431,11 @@ function getChannelMessages(channel, snowflake = null) {
   return channel.messages.fetch(fetchOptions);
 }
 
-// args is a javascript array and channel is a TextChannel
-// if anything goes wrong the user is sent a message in the
-// TextChannel and stops the command execution. Returns bool
+// Takes an arg array and TextChannel
+// Returns a bool denoting if the command structure is ok
 function isValidCommand(args, channel) {
-  if (args.length === 0) {
-    channel.send('No argument provided.');
-    channel.send(USAGE);
+  if (!args.length) {
+    channel.send(`No argument provided.\n${USAGE}`);
     return false;
   }
 
@@ -445,34 +443,36 @@ function isValidCommand(args, channel) {
       args.includes('participants') || args.includes('complete')) {
     if (args.length !== 1) {
       channel.send(
-          'Arguments "help", "metadata", "participants", and "complete" can\'t be accompanied by other arguments.');
-      channel.send(USAGE);
+          `Arguments "help", "metadata", "participants", and "complete" can't be accompanied by other arguments.\n${USAGE}`);
       return false;
-    } else {
-      return true;
     }
+
+    return true;
   }
 
   if (args[0] !== 'text' && args[0] !== 'whole-messages') {
     channel.send(
-        '"text" or "whole-messages" must be specified before other arguments.');
-    channel.send(USAGE);
+        `"text" or "whole-messages" must be specified before other arguments.\n${USAGE}`);
     return false;
-  } else if (args[0] === 'whole-messages') {
+  }
+
+  if (args.includes('text') && args.includes('whole-messages')) {
+    channel.send(`"text" and "whole-messages" are mutually exclusive.\n${USAGE}`);
+    return false;
+  }
+
+  if (args[0] === 'whole-messages' && args.length >= 2) {
     if (args.length > 2) {
-      channel.send('Too many arguments for "whole-messages".');
-      channel.send(USAGE);
-      return false;
-    } else if (args.length === 2 && args[1] !== 'messages-only') {
-      channel.send(
-          '"messages-only" is the only argument that can come after "whole-messages".');
-      channel.send(USAGE);
+      channel.send(`"whole-messages" can't have more than 1 argument.\n${USAGE}`);
       return false;
     }
-    return true;
-  } else {
-    // Assume that any arguments after 'text' are recognized. Order and
-    // duplicates dont matter.
-    return true;
+
+    if (args[1] !== 'messages-only') {
+      channel.send(
+          `"messages-only" is the only argument that can come after "whole-messages".\n${USAGE}`);
+      return false;
+    }
   }
+
+  return true;
 }
