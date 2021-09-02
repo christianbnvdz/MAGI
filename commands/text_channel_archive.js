@@ -135,7 +135,7 @@ async function sendArchiveFiles(channel) {
   const gzip = createGzip();
   let pageNo = 0;
 
-  if (existsSync(METADATA_FILENAME)) {
+  if (generatedMetadata) {
     pageNo = 1;
     await tar.c({file: TAR_FILENAME}, [
       METADATA_FILENAME, PARTICIPANTS_FILENAME, FIRST_MESSAGE_PAGE_FILENAME
@@ -143,21 +143,28 @@ async function sendArchiveFiles(channel) {
     rm(METADATA_FILENAME);
     rm(PARTICIPANTS_FILENAME);
     rm(FIRST_MESSAGE_PAGE_FILENAME);
-    const source = createReadStream(TAR_FILENAME);
-    const destination = createWriteStream(`${TAR_FILENAME}.gz`);
-    await pipeline(source, gzip, destination);
-    rm(TAR_FILENAME);
+    await compressFile(TAR_FILENAME);
     sendFile(channel, `${TAR_FILENAME}.gz`);
   }
 
   while (existsSync(`./messages_${pageNo}.json`)) {
-    const source = createReadStream(`messages_${pageNo}.json`);
-    const destination = createWriteStream(`messages_${pageNo}.json.gz`);
-    await pipeline(source, gzip, destination);
-    rm(`messages_${pageNo}.json`);
+    await compressFile(`messages_${pageNo}.json`);
     sendFile(channel, `messages_${pageNo}.json.gz`);
     ++pageNo;
   }
+}
+
+// Takes a file name
+// Compresses the given file and deletes the original file
+// Returns a promise indicating that the file finished compressing
+// The compressed file appends .gz to the filename given
+async function compressFile(filename) {
+  const gzip = createGzip();
+  const source = createReadStream(filename);
+  const destination = createWriteStream(`${filename}.gz`);
+  let finished = await pipeline(source, gzip, destination);
+  rm(filename);
+  return finished;
 }
 
 // Takes a TextChannel and filename
