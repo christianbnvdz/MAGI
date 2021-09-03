@@ -14,7 +14,7 @@ const FILE_UPLOAD_SIZE_LIMIT = 8000000;
 // Filenames for known files
 const METADATA_FILENAME = 'metadata.json';
 const PARTICIPANTS_FILENAME = 'participants.json';
-const FIRST_MESSAGE_PAGE_FILENAME = 'messages_0.json';
+const MESSAGES_0_FILENAME = 'messages_0.json';
 const TAR_FILENAME = 'archive.tar';
 
 const NAME = 'archive';
@@ -123,47 +123,54 @@ function generateMetadataFile(channel) {
 // Takes a TextChannel
 // Sends the archive files to the channel after gzip and tar if need be
 // and deletes files after sending to channel
+// Returns a promise indicating succesful deletion of all files in
+// the directory called 'channel.id'
 async function sendArchiveFiles(channel) {
-  const generatedMetadata = existsSync(`${channel.id}/${METADATA_FILENAME}`);
-  const generatedParticipants =
-      existsSync(`${channel.id}/${PARTICIPANTS_FILENAME}`);
+  const metadata_path = `${channel.id}/${METADATA_FILENAME}`;
+  const participants_path = `${channel.id}/${PARTICIPANTS_FILENAME}`;
+  const messages_0_path = `${channel.id}/${MESSAGES_0_FILENAME}`;
+  const tar_path = `${channel.id}/${TAR_FILENAME}`;
+
+  const generatedMetadata = existsSync(metadata_path);
+  const generatedParticipants = existsSync(participants_path);
+
   // If only metadata file was generated
-  if (generatedMetadata && !generatedParticipants) {
-    sendFile(channel, METADATA_FILENAME);
-    return;
-  }
+  if (generatedMetadata && !generatedParticipants)
+    return sendFile(channel, metadata_path, METADATA_FILENAME);
   // If only participants file was generated
-  if (generatedParticipants && !generatedMetadata) {
-    sendFile(channel, PARTICIPANTS_FILENAME);
-    return;
-  }
+  if (generatedParticipants && !generatedMetadata)
+    return sendFile(channel, participants_path, PARTICIPANTS_FILENAME);
   // At this point, either both exist or none exist
   // If one exists then message files exist: messages-only wasn't passed
   // If not then just message files exist: messages-only was passed
   let pageNo = 0;
+  const deletionPromises = [];
 
   if (generatedMetadata) {
     pageNo = 1;
-    await tar.c({cwd: `${channel.id}`, file: `${channel.id}/${TAR_FILENAME}`}, [
-      METADATA_FILENAME, PARTICIPANTS_FILENAME, FIRST_MESSAGE_PAGE_FILENAME
+    await tar.c({cwd: channel.id, file: tar_path}, [
+      METADATA_FILENAME, PARTICIPANTS_FILENAME, MESSAGES_0_FILENAME
     ]);
-    rm(`${channel.id}/${METADATA_FILENAME}`);
-    rm(`${channel.id}/${PARTICIPANTS_FILENAME}`);
-    rm(`${channel.id}/${FIRST_MESSAGE_PAGE_FILENAME}`);
-    await compressFile(`${channel.id}/${TAR_FILENAME}`);
-    await sendFile(channel, `${TAR_FILENAME}.gz`);
+    deletionPromises.push(rm(metadata_path));
+    deletionPromises.push(rm(participants_path));
+    deletionPromises.push(rm(messages_0_path));
+    await compressFile(tar_path);
+    deletionPromises.push(sendFile(channel, `${tar_path}.gz`, `${TAR_FILENAME}.gz`));
   }
 
   while (existsSync(`${channel.id}/messages_${pageNo}.json`)) {
     await compressFile(`${channel.id}/messages_${pageNo}.json`);
-    await sendFile(channel, `messages_${pageNo}.json.gz`);
+    deletionPromises.push(sendFile(channel, `messages_${pageNo}.json.gz`));
     ++pageNo;
   }
+
+  return Promise.all(deletionPromises);
 }
 
 // Takes a filepath
 // Compresses the given file and deletes the original file
-// Returns a promise indicating that the file finished compressing
+// Returns a promise indicating that the original file was deleted
+// implying that the file was gzipped as well.
 // The compressed file appends .gz to the filename given
 async function compressFile(filepath) {
   const gzip = createGzip();
@@ -173,11 +180,13 @@ async function compressFile(filepath) {
   return rm(filepath);
 }
 
-// Takes a TextChannel and filename
+// Takes a TextChannel, filepath, and filename
 // Sends the specified file to the channel and deletes it after sending
-async function sendFile(channel, filename) {
-  await channel.send({files: [{attachment: `${channel.id}/${filename}`, name: filename}]});
-  return rm(`${channel.id}/${filename}`);
+// Returns a promise indicating successful deletion
+// implying successful send as well
+async function sendFile(channel, filepath, filename) {
+  await channel.send({files: [{attachment: filepath, name: filename}]});
+  return rm(filepath);
 }
 
 // Takes a TextChannel, arg array, and a bool denoting if this is a subchannel
