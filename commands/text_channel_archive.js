@@ -1,7 +1,7 @@
 import {Buffer} from 'buffer';
 import {Collection} from 'discord.js';
 import {createReadStream, createWriteStream, existsSync} from 'fs';
-import {rm, writeFile} from 'fs/promises';
+import {rm, mkdir, rmdir, writeFile} from 'fs/promises';
 import process from 'process';
 import {pipeline} from 'stream/promises';
 import * as tar from 'tar';
@@ -14,7 +14,7 @@ const FILE_UPLOAD_SIZE_LIMIT = 8000000;
 // Filenames for known files
 const METADATA_FILENAME = 'metadata.json';
 const PARTICIPANTS_FILENAME = 'participants.json';
-const FIRST_MESSAGE_PAGE_FILENAME = 'messages_0.json';
+const MESSAGES_0_FILENAME = 'messages_0.json';
 const TAR_FILENAME = 'archive.tar';
 
 const NAME = 'archive';
@@ -37,8 +37,16 @@ async function execute(message, args) {
     return;
   };
 
+  if (existsSync(`${message.channel.id}`)) {
+    message.channel.send(
+        `Please wait for the current archive process to finish.`);
+    return;
+  }
+
+  await mkdir(message.channel.id);
   await generateArchiveFiles(message, args);
-  sendArchiveFiles(message.channel);
+  await sendArchiveFiles(message.channel);
+  rmdir(message.channel.id);
 }
 
 export {NAME, USAGE, RECOGNIZED_ARGS, DESCRIPTION, execute};
@@ -109,67 +117,80 @@ function generateMetadataFile(channel) {
     channelNsfw: channel.nsfw
   };
 
-  return writeFile(METADATA_FILENAME, JSON.stringify(metadata), 'utf8');
+  return writeFile(
+      `${channel.id}/${METADATA_FILENAME}`, JSON.stringify(metadata), 'utf8');
 }
 
 // Takes a TextChannel
 // Sends the archive files to the channel after gzip and tar if need be
 // and deletes files after sending to channel
+// Returns a promise indicating succesful deletion of all files in
+// the directory called 'channel.id'
 async function sendArchiveFiles(channel) {
-  const generatedMetadata = existsSync(METADATA_FILENAME);
-  const generatedParticipants = existsSync(PARTICIPANTS_FILENAME);
+  const metadata_path = `${channel.id}/${METADATA_FILENAME}`;
+  const participants_path = `${channel.id}/${PARTICIPANTS_FILENAME}`;
+  const messages_0_path = `${channel.id}/${MESSAGES_0_FILENAME}`;
+  const tar_path = `${channel.id}/${TAR_FILENAME}`;
+
+  const generatedMetadata = existsSync(metadata_path);
+  const generatedParticipants = existsSync(participants_path);
+
   // If only metadata file was generated
-  if (generatedMetadata && !generatedParticipants) {
-    sendFile(channel, METADATA_FILENAME);
-    return;
-  }
+  if (generatedMetadata && !generatedParticipants)
+    return sendFile(channel, metadata_path, METADATA_FILENAME);
   // If only participants file was generated
-  if (generatedParticipants && !generatedMetadata) {
-    sendFile(channel, PARTICIPANTS_FILENAME);
-    return;
-  }
+  if (generatedParticipants && !generatedMetadata)
+    return sendFile(channel, participants_path, PARTICIPANTS_FILENAME);
   // At this point, either both exist or none exist
   // If one exists then message files exist: messages-only wasn't passed
   // If not then just message files exist: messages-only was passed
   let pageNo = 0;
+  const deletionPromises = [];
 
   if (generatedMetadata) {
     pageNo = 1;
-    await tar.c({file: TAR_FILENAME}, [
-      METADATA_FILENAME, PARTICIPANTS_FILENAME, FIRST_MESSAGE_PAGE_FILENAME
-    ]);
-    rm(METADATA_FILENAME);
-    rm(PARTICIPANTS_FILENAME);
-    rm(FIRST_MESSAGE_PAGE_FILENAME);
-    await compressFile(TAR_FILENAME);
-    sendFile(channel, `${TAR_FILENAME}.gz`);
+    await tar.c(
+        {cwd: channel.id, file: tar_path},
+        [METADATA_FILENAME, PARTICIPANTS_FILENAME, MESSAGES_0_FILENAME]);
+    deletionPromises.push(rm(metadata_path));
+    deletionPromises.push(rm(participants_path));
+    deletionPromises.push(rm(messages_0_path));
+    await compressFile(tar_path);
+    deletionPromises.push(
+        sendFile(channel, `${tar_path}.gz`, `${TAR_FILENAME}.gz`));
   }
 
-  while (existsSync(`./messages_${pageNo}.json`)) {
-    await compressFile(`messages_${pageNo}.json`);
-    sendFile(channel, `messages_${pageNo}.json.gz`);
+  while (existsSync(`${channel.id}/messages_${pageNo}.json`)) {
+    await compressFile(`${channel.id}/messages_${pageNo}.json`);
+    deletionPromises.push(sendFile(
+        channel, `${channel.id}/messages_${pageNo}.json.gz`,
+        `messages_${pageNo}.json.gz`));
     ++pageNo;
   }
+
+  return Promise.all(deletionPromises);
 }
 
-// Takes a file name
+// Takes a filepath
 // Compresses the given file and deletes the original file
-// Returns a promise indicating that the file finished compressing
+// Returns a promise indicating that the original file was deleted
+// implying that the file was gzipped as well.
 // The compressed file appends .gz to the filename given
-async function compressFile(filename) {
+async function compressFile(filepath) {
   const gzip = createGzip();
-  const source = createReadStream(filename);
-  const destination = createWriteStream(`${filename}.gz`);
-  const finished = await pipeline(source, gzip, destination);
-  rm(filename);
-  return finished;
+  const source = createReadStream(filepath);
+  const destination = createWriteStream(`${filepath}.gz`);
+  await pipeline(source, gzip, destination);
+  return rm(filepath);
 }
 
-// Takes a TextChannel and filename
+// Takes a TextChannel, filepath, and filename
 // Sends the specified file to the channel and deletes it after sending
-async function sendFile(channel, filename) {
-  await channel.send({files: [{attachment: `./${filename}`, name: filename}]});
-  rm(filename);
+// Returns a promise indicating successful deletion
+// implying successful send as well
+async function sendFile(channel, filepath, filename) {
+  await channel.send({files: [{attachment: filepath, name: filename}]});
+  return rm(filepath);
 }
 
 // Takes a TextChannel, arg array, and a bool denoting if this is a subchannel
@@ -209,8 +230,9 @@ async function generateMessageFiles(channel, args, inSubchannel = false) {
       const preparedMessagesJson = JSON.stringify(preparedMessages);
       if (Buffer.byteLength(preparedMessagesJson, 'utf8') >=
           FILE_UPLOAD_SIZE_LIMIT) {
-        filePromises.push(
-            writeFile(`messages_${page}.json`, preparedMessagesJson, 'utf8'));
+        filePromises.push(writeFile(
+            `${channel.id}/messages_${page}.json`, preparedMessagesJson,
+            'utf8'));
         ++page;
         fetchedMessageSet.clear();
       }
@@ -231,13 +253,14 @@ async function generateMessageFiles(channel, args, inSubchannel = false) {
   if (!inSubchannel) {
     const preparedMessagesJson = JSON.stringify(preparedMessages);
     if (preparedMessagesJson.length > 2)
-      filePromises.push(
-          writeFile(`messages_${page}.json`, preparedMessagesJson, 'utf8'));
+      filePromises.push(writeFile(
+          `${channel.id}/messages_${page}.json`, preparedMessagesJson, 'utf8'));
   }
 
   if (!inSubchannel && !args.includes('messages-only'))
-    filePromises.push(
-        writeFile(PARTICIPANTS_FILENAME, JSON.stringify(participants), 'utf8'));
+    filePromises.push(writeFile(
+        `${channel.id}/${PARTICIPANTS_FILENAME}`, JSON.stringify(participants),
+        'utf8'));
 
   return (!inSubchannel) ? Promise.all(filePromises) :
                            [preparedMessages, participants];
