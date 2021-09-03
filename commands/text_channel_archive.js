@@ -117,7 +117,8 @@ function generateMetadataFile(channel) {
     channelNsfw: channel.nsfw
   };
 
-  return writeFile(`${channel.id}/${METADATA_FILENAME}`, JSON.stringify(metadata), 'utf8');
+  return writeFile(
+      `${channel.id}/${METADATA_FILENAME}`, JSON.stringify(metadata), 'utf8');
 }
 
 // Takes a TextChannel
@@ -148,14 +149,15 @@ async function sendArchiveFiles(channel) {
 
   if (generatedMetadata) {
     pageNo = 1;
-    await tar.c({cwd: channel.id, file: tar_path}, [
-      METADATA_FILENAME, PARTICIPANTS_FILENAME, MESSAGES_0_FILENAME
-    ]);
+    await tar.c(
+        {cwd: channel.id, file: tar_path},
+        [METADATA_FILENAME, PARTICIPANTS_FILENAME, MESSAGES_0_FILENAME]);
     deletionPromises.push(rm(metadata_path));
     deletionPromises.push(rm(participants_path));
     deletionPromises.push(rm(messages_0_path));
     await compressFile(tar_path);
-    deletionPromises.push(sendFile(channel, `${tar_path}.gz`, `${TAR_FILENAME}.gz`));
+    deletionPromises.push(
+        sendFile(channel, `${tar_path}.gz`, `${TAR_FILENAME}.gz`));
   }
 
   while (existsSync(`${channel.id}/messages_${pageNo}.json`)) {
@@ -226,7 +228,9 @@ async function generateMessageFiles(channel, args, inSubchannel = false) {
       const preparedMessagesJson = JSON.stringify(preparedMessages);
       if (Buffer.byteLength(preparedMessagesJson, 'utf8') >=
           FILE_UPLOAD_SIZE_LIMIT) {
-        filePromises.push(writeFile(`${channel.id}/messages_${page}.json`, preparedMessagesJson, 'utf8'));
+        filePromises.push(writeFile(
+            `${channel.id}/messages_${page}.json`, preparedMessagesJson,
+            'utf8'));
         ++page;
         fetchedMessageSet.clear();
       }
@@ -247,11 +251,14 @@ async function generateMessageFiles(channel, args, inSubchannel = false) {
   if (!inSubchannel) {
     const preparedMessagesJson = JSON.stringify(preparedMessages);
     if (preparedMessagesJson.length > 2)
-      filePromises.push(writeFile(`${channel.id}/messages_${page}.json`, preparedMessagesJson, 'utf8'));
+      filePromises.push(writeFile(
+          `${channel.id}/messages_${page}.json`, preparedMessagesJson, 'utf8'));
   }
 
   if (!inSubchannel && !args.includes('messages-only'))
-    filePromises.push(writeFile(`${channel.id}/${PARTICIPANTS_FILENAME}`, JSON.stringify(participants), 'utf8'));
+    filePromises.push(writeFile(
+        `${channel.id}/${PARTICIPANTS_FILENAME}`, JSON.stringify(participants),
+        'utf8'));
 
   return (!inSubchannel) ? Promise.all(filePromises) :
                            [preparedMessages, participants];
