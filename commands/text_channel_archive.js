@@ -162,7 +162,9 @@ async function sendArchiveFiles(channel) {
 
   while (existsSync(`${channel.id}/messages_${pageNo}.json`)) {
     await compressFile(`${channel.id}/messages_${pageNo}.json`);
-    deletionPromises.push(sendFile(channel, `messages_${pageNo}.json.gz`));
+    deletionPromises.push(sendFile(
+        channel, `${channel.id}/messages_${pageNo}.json.gz`,
+        `messages_${pageNo}.json.gz`));
     ++pageNo;
   }
 
