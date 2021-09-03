@@ -37,6 +37,12 @@ async function execute(message, args) {
     return;
   };
 
+  if (existsSync(`${message.channel.id}`)) {
+    message.channel.send(
+        `Please wait for the current archive process to finish.`);
+    return;
+  }
+
   await mkdir(message.channel.id);
   await generateArchiveFiles(message, args);
   await sendArchiveFiles(message.channel);
