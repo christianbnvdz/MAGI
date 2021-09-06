@@ -8,7 +8,7 @@ const TYPE = 'MISC';
 function execute(message, args) {
   if (args.length === 1) {
     const command = message.client.commands.get(args[0]);
-    message.channel.send(`${command.USAGE}\n${command.DESCRIPTION}`);
+    message.channel.send(`>>> ${command.USAGE}\n${command.DESCRIPTION}`);
   } else {
     sendCommandList(message);
   }
@@ -62,10 +62,10 @@ function getCommands(commands, type) {
 
 function isValidCommand(args, channel) {
   if (args.length > 1) {
-    channel.send(`Too many arguments passed.\n${USAGE}`);
+    channel.send(`>>> Too many arguments passed.\n${USAGE}`);
     return false;
   } else if (args.length === 1 && !channel.client.commands.has(args[0])) {
-    channel.send(`${args[0]} is not a recognized command.\n${USAGE}`);
+    channel.send(`>>> ${args[0]} is not a recognized command.\n${USAGE}`);
     return false;
   }
 
