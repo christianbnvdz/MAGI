@@ -18,22 +18,18 @@ const MESSAGES_0_FILENAME = 'messages_0.json';
 const TAR_FILENAME = 'archive.tar';
 
 const NAME = 'archive';
-const USAGE = `Usage: ${process.env.PREFIX}archive ((help | metadata | participants | complete) | (text (reactions | stickers | attachments | threads)* | whole-messages) messages-only?)`;
+const USAGE = `Usage: ${process.env.PREFIX}${NAME} ((metadata | participants | complete) | (text (reactions | stickers | attachments | threads)* | whole-messages) [messages-only])`;
 const DESCRIPTION = 'Creates a .json representation of what you choose to archive and uploads it to the same channel that the command was executed in.\n\nmetadata - only captures guild and channel information.\nparticipants - only captures information about who has ever participated in the channel.\ncomplete - captures everything (see Capture Selection).\nhelp - will send the usage and this message to the channel.\n\nCapture Selection:\ntext - will capture only the textual content for each message. Follow up with "reactions", "stickers", "attachments", and/or "threads" to choose what else to capture.\nwhole-messages - captures everything.\nmessages-only - used to ignore metadata and participants since they are captured by default.\n\nOnly the guild owner can execute this command.';
+const TYPE = 'ADMIN';
 async function execute(message, args) {
   if (message.guild.ownerId !== message.author.id) {
-    message.channel.send('Only the guild owner can execute this command.');
+    message.channel.send('>>> Only the guild owner can execute this command.');
     return;
   }
 
-  if (args[0] === 'help') {
-    message.channel.send(`${USAGE}\n${DESCRIPTION}`);
-    return;
-  };
-
   if (existsSync(`${message.channel.id}`)) {
     message.channel.send(
-        `Please wait for the current archive process to finish.`);
+        `>>> Please wait for the current archive process to finish.`);
     return;
   }
 
@@ -43,7 +39,7 @@ async function execute(message, args) {
   rmdir(message.channel.id);
 }
 
-export {NAME, USAGE, DESCRIPTION, isValidCommand, execute};
+export {NAME, USAGE, DESCRIPTION, TYPE, isValidCommand, execute};
 
 // Takes a Message and arg array
 // Generates all the archive files requested based on args
@@ -424,27 +420,27 @@ function getChannelMessages(channel, snowflake = null) {
 // Returns a bool denoting if the command structure is ok
 function isValidCommand(args, channel) {
   if (!args.length) {
-    channel.send(`No argument provided.\n${USAGE}`);
+    channel.send(`>>> No argument provided.\n${USAGE}`);
     return false;
   }
 
   const recognized_args = [
-    'help', 'metadata', 'participants', 'complete', 'text', 'reactions',
-    'stickers', 'attachments', 'threads', 'whole-messages', 'messages-only'
+    'metadata', 'participants', 'complete', 'text', 'reactions', 'stickers',
+    'attachments', 'threads', 'whole-messages', 'messages-only'
   ];
 
   for (const arg of args) {
     if (!recognized_args.includes(arg)) {
-      channel.send(`Unrecognized argument: ${arg}\n${USAGE}`);
+      channel.send(`>>> Unrecognized argument: ${arg}\n${USAGE}`);
       return false;
     }
   }
 
-  if (args.includes('help') || args.includes('metadata') ||
-      args.includes('participants') || args.includes('complete')) {
+  if (args.includes('metadata') || args.includes('participants') ||
+      args.includes('complete')) {
     if (args.length !== 1) {
       channel.send(
-          `Arguments "help", "metadata", "participants", and "complete" can't be accompanied by other arguments.\n${USAGE}`);
+          `>>> Arguments "metadata", "participants", and "complete" can't be accompanied by other arguments.\n${USAGE}`);
       return false;
     }
 
@@ -453,26 +449,26 @@ function isValidCommand(args, channel) {
 
   if (args[0] !== 'text' && args[0] !== 'whole-messages') {
     channel.send(
-        `"text" or "whole-messages" must be specified before other arguments.\n${USAGE}`);
+        `>>> "text" or "whole-messages" must be specified before other arguments.\n${USAGE}`);
     return false;
   }
 
   if (args.includes('text') && args.includes('whole-messages')) {
     channel.send(
-        `"text" and "whole-messages" are mutually exclusive.\n${USAGE}`);
+        `>>> "text" and "whole-messages" are mutually exclusive.\n${USAGE}`);
     return false;
   }
 
   if (args[0] === 'whole-messages' && args.length >= 2) {
     if (args.length > 2) {
       channel.send(
-          `"whole-messages" can't have more than 1 argument.\n${USAGE}`);
+          `>>> "whole-messages" can't have more than 1 argument.\n${USAGE}`);
       return false;
     }
 
     if (args[1] !== 'messages-only') {
       channel.send(
-          `"messages-only" is the only argument that can come after "whole-messages".\n${USAGE}`);
+          `>>> "messages-only" is the only argument that can come after "whole-messages".\n${USAGE}`);
       return false;
     }
   }
