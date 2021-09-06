@@ -32,13 +32,7 @@ client.on('messageCreate', message => {
 
   const commandModule = client.commands.get(command);
 
-  for (const arg of args) {
-    if (!commandModule.RECOGNIZED_ARGS.includes(arg)) {
-      message.channel.send(
-          `Unrecognized argument: ${arg}\n${commandModule.USAGE}`);
-      return;
-    }
-  }
+  if (!commandModule.isValidCommand(args, message.channel)) return;
 
   commandModule.execute(message, args);
 });
