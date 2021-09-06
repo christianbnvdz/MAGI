@@ -27,7 +27,7 @@ function isValidCommand(args, channel) {
     return false;
   }
 
-  if (isNaN(args[0]) && args[0] !== 'help') {
+  if (isNaN(args[0])) {
     channel.send(`>>> Argument is not a userId.\n${USAGE}`);
     return false;
   }
