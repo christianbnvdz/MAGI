@@ -18,18 +18,13 @@ const MESSAGES_0_FILENAME = 'messages_0.json';
 const TAR_FILENAME = 'archive.tar';
 
 const NAME = 'archive';
-const USAGE = `Usage: ${process.env.PREFIX}archive ((help | metadata | participants | complete) | (text (reactions | stickers | attachments | threads)* | whole-messages) messages-only?)`;
+const USAGE = `Usage: ${process.env.PREFIX}${NAME} ((metadata | participants | complete) | (text (reactions | stickers | attachments | threads)* | whole-messages) [messages-only])`;
 const DESCRIPTION = 'Creates a .json representation of what you choose to archive and uploads it to the same channel that the command was executed in.\n\nmetadata - only captures guild and channel information.\nparticipants - only captures information about who has ever participated in the channel.\ncomplete - captures everything (see Capture Selection).\nhelp - will send the usage and this message to the channel.\n\nCapture Selection:\ntext - will capture only the textual content for each message. Follow up with "reactions", "stickers", "attachments", and/or "threads" to choose what else to capture.\nwhole-messages - captures everything.\nmessages-only - used to ignore metadata and participants since they are captured by default.\n\nOnly the guild owner can execute this command.';
 async function execute(message, args) {
   if (message.guild.ownerId !== message.author.id) {
     message.channel.send('Only the guild owner can execute this command.');
     return;
   }
-
-  if (args[0] === 'help') {
-    message.channel.send(`${USAGE}\n${DESCRIPTION}`);
-    return;
-  };
 
   if (existsSync(`${message.channel.id}`)) {
     message.channel.send(
@@ -429,8 +424,8 @@ function isValidCommand(args, channel) {
   }
 
   const recognized_args = [
-    'help', 'metadata', 'participants', 'complete', 'text', 'reactions',
-    'stickers', 'attachments', 'threads', 'whole-messages', 'messages-only'
+    'metadata', 'participants', 'complete', 'text', 'reactions', 'stickers',
+    'attachments', 'threads', 'whole-messages', 'messages-only'
   ];
 
   for (const arg of args) {
@@ -440,11 +435,11 @@ function isValidCommand(args, channel) {
     }
   }
 
-  if (args.includes('help') || args.includes('metadata') ||
-      args.includes('participants') || args.includes('complete')) {
+  if (args.includes('metadata') || args.includes('participants') ||
+      args.includes('complete')) {
     if (args.length !== 1) {
       channel.send(
-          `Arguments "help", "metadata", "participants", and "complete" can't be accompanied by other arguments.\n${USAGE}`);
+          `Arguments "metadata", "participants", and "complete" can't be accompanied by other arguments.\n${USAGE}`);
       return false;
     }
 
