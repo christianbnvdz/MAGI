@@ -1,14 +1,9 @@
 import process from 'process';
 
 const NAME = 'pfp';
-const USAGE = `Usage: ${process.env.PREFIX}pfp (help | <userId>)`;
+const USAGE = `Usage: ${process.env.PREFIX}${NAME} <userId>`;
 const DESCRIPTION = 'Posts the specified user\'s profile picture to the channel.';
 async function execute(message, args) {
-  if (args[0] === 'help') {
-    message.channel.send(`${USAGE}\n${DESCRIPTION}`);
-    return;
-  }
-
   try {
     const user = await message.client.users.fetch(args[0]);
     message.channel.send(user.displayAvatarURL({dynamic: true}));
