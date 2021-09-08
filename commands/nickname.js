@@ -7,17 +7,14 @@ const TYPE = 'ADMIN';
 async function execute(message, args) {
   let member;
 
-  if (args[0].startsWith('<@')) {
-    member = message.mentions.members.first();
-  } else if (!isNaN(args[0])) {
-    try {
-      member = await message.guild.members.fetch(args[0]);
-    } catch (e) {
-      message.channel.send('>>> Invalid userId.');
+  try {
+    member = await getGuildMember(message, args);
+    if (!member) {
+      message.channel.send(`>>> ${args[0]} is not a userId or user mention.`);
       return;
     }
-  } else {
-    message.channel.send(`>>> ${args[0]} is not a userId or user mention.`);
+  } catch (e) {
+    message.channel.send('>>> Invalid userId.');
     return;
   }
 
@@ -43,6 +40,21 @@ async function execute(message, args) {
 }
 
 export {NAME, USAGE, DESCRIPTION, TYPE, isValidCommand, execute};
+
+// Takes a message and arg array
+// Returns a GuildMember or null if a valid userId or mention wasn't given
+// This throws an invalid user error if the userId isn't valid
+async function getGuildMember(message, args) {
+  let guildMember = null;
+
+  if (args[0].startsWith('<@')) {
+    guildMember = message.mentions.members.first();
+  } else if (!isNaN(args[0])) {
+    guildMember = await message.guild.members.fetch(args[0]);
+  }
+  
+  return guildMember;
+}
 
 function isValidCommand(args, channel) {
   if (!args.length) {
