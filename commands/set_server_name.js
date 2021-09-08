@@ -15,30 +15,35 @@ async function execute(message, args) {
   if (serverName === message.guild.name) {
     message.channel.send('>>> Server name is unchanged.');
     return;
-  }
-
-  if (serverName.includes('\n')) {
+  } else if (serverName.includes('\n')) {
     message.channel.send('>>> Server names cannot contain a newline.');
     return;
-  }
-
-  if (serverName.length > 100 || serverName.length < 2) {
+  } else if (serverName.length > 100 || serverName.length < 2) {
     message.channel.send('>>> Server names must be 2-100 characters long.');
     return;
   }
 
-  const oldServerName = message.guild.name;
+  const successEmbed = generateSuccessEmbed(message, serverName);
   await message.guild.setName(serverName);
+
+  message.channel.send({embeds: [successEmbed]});
+}
+
+// Takes a Message and a server name
+// Generates an embed to send on succesful server name change
+// Note that when you call setName on a guild, the message gets changed
+// as well. So this function must be called before the call to setName
+function generateSuccessEmbed(message, newServerName) {
+  const oldServerName = message.guild.name;
   const guildMember = message.guild.members.cache.get(message.author.id);
-  const successEmbed = new MessageEmbed()
+  return new MessageEmbed()
       .setAuthor(guildMember.displayName,
-	         guildMember.user.displayAvatarURL({dynamic: true}))
+                 guildMember.user.displayAvatarURL({dynamic: true}))
       .setColor('#385028')
       .setThumbnail(message.guild.iconURL({dynamic: true}))
       .setTitle('Server Name Changed')
       .setDescription(
-          `${guildMember.displayName} changed the guild name from **${oldServerName}** to **${serverName}**.`);
-  message.channel.send({embeds: [successEmbed]});
+          `**${guildMember.displayName}** changed the server name from **${oldServerName}** to **${newServerName}**.`);
 }
 
 export {NAME, USAGE, DESCRIPTION, TYPE, isValidCommand, execute};
