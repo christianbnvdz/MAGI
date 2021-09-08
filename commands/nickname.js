@@ -1,4 +1,5 @@
 import process from 'process';
+import {MessageEmbed} from 'discord.js';
 
 const NAME = 'nickname';
 const USAGE = `Usage: ${process.env.PREFIX}${NAME} <userId | user mention> [nickname]`;
@@ -30,13 +31,29 @@ async function execute(message, args) {
     return;
   }
 
+  const oldNickname = member.displayName;
+
   try {
     await member.setNickname(nickname);
   } catch (e) {
     message.channel.send(
-        '>>> Cannot change the nickname of a user with a higher role');
+        '>>> Cannot change the nickname of a user with a higher role than me.');
     return;
   }
+
+  const author = message.guild.members.cache.get(message.author.id);
+  const updateType = (nickname.length) ? 'Updated' : 'Removed';
+  const newNickname = (nickname.length) ? `from **${oldNickname}** to **${nickname}**` : `**${oldNickname}**`;
+  const successEmbed = new MessageEmbed()
+      .setAuthor(author.displayName,
+                 author.user.displayAvatarURL({dynamic: true}))
+      .setColor('#385028')
+      .setThumbnail(member.user.displayAvatarURL({dynamic: true}))
+      .setTitle('Nickname ' + updateType)
+      .setDescription(
+          `**${author.displayName}** ${updateType.toLowerCase()} **${member.user.username}**'s nickname ${newNickname}`);
+
+  message.channel.send({embeds: [successEmbed]});
 }
 
 export {NAME, USAGE, DESCRIPTION, TYPE, isValidCommand, execute};
