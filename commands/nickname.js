@@ -19,6 +19,11 @@ async function execute(message, args) {
     return;
   }
 
+  if (args.length === 1 && member.displayName === member.user.username) {
+    message.channel.send('>>> User does not have a nickname to remove.');
+    return;
+  }
+
   // Length of the prefix + length of the command name + the space + length of
   // userId or mention + 1 for space + 1 for first character in nickname
   // but - 1 to turn length into index.
