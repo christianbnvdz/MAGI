@@ -33,6 +33,11 @@ async function execute(message, args) {
 
   const oldNickname = member.displayName;
 
+  if (nickname === oldNickname) {
+    message.channel.send('>>> Nickname is the same as before.');
+    return;
+  }
+
   try {
     await member.setNickname(nickname);
   } catch (e) {
@@ -43,7 +48,7 @@ async function execute(message, args) {
 
   const author = message.guild.members.cache.get(message.author.id);
   const updateType = (nickname.length) ? 'Updated' : 'Removed';
-  const newNickname = (nickname.length) ? `from **${oldNickname}** to **${nickname}**` : `**${oldNickname}**`;
+  const newNickname = (nickname.length) ? ` from **${oldNickname}** to **${nickname}**` : `, **${oldNickname}**`;
   const successEmbed = new MessageEmbed()
       .setAuthor(author.displayName,
                  author.user.displayAvatarURL({dynamic: true}))
@@ -51,7 +56,7 @@ async function execute(message, args) {
       .setThumbnail(member.user.displayAvatarURL({dynamic: true}))
       .setTitle('Nickname ' + updateType)
       .setDescription(
-          `**${author.displayName}** ${updateType.toLowerCase()} **${member.user.username}**'s nickname ${newNickname}`);
+          `**${author.displayName}** ${updateType.toLowerCase()} **${member.user.username}**'s nickname${newNickname}.`);
 
   message.channel.send({embeds: [successEmbed]});
 }
