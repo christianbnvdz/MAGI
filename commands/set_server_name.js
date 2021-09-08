@@ -1,13 +1,15 @@
 import process from 'process';
+import {MessageEmbed} from 'discord.js';
 
 const NAME = 'set-server-name';
 const USAGE = `Usage: ${process.env.PREFIX}${NAME} <new server name>`;
 const DESCRIPTION = 'Changes the server name.';
 const TYPE = 'ADMIN';
-function execute(message, args) {
+async function execute(message, args) {
   const messageText = message.content;
   const serverName = messageText
-      .substring(NAME.length + 1, messageText.length)
+      .substring(NAME.length + process.env.PREFIX.length + 1,
+                 messageText.length)
       .trim();
 
   if (serverName.includes('\n')) {
@@ -20,7 +22,18 @@ function execute(message, args) {
     return;
   }
 
-  message.guild.setName(serverName);
+  const oldServerName = message.guild.name;
+  await message.guild.setName(serverName);
+  const guildMember = message.guild.members.cache.get(message.author.id);
+  const successEmbed = new MessageEmbed()
+      .setAuthor(guildMember.displayName,
+	         guildMember.user.displayAvatarURL({dynamic: true}))
+      .setColor('#385028')
+      .setThumbnail(message.guild.iconURL({dynamic: true}))
+      .setTitle('Server Name Changed')
+      .setDescription(
+          `${guildMember.displayName} changed the guild name from **${oldServerName}** to **${serverName}**`);
+  message.channel.send({embeds: [successEmbed]});
 }
 
 export {NAME, USAGE, DESCRIPTION, TYPE, isValidCommand, execute};
