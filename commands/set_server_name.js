@@ -8,8 +8,8 @@ const TYPE = 'ADMIN';
 async function execute(message, args) {
   const messageText = message.content;
   const serverName = messageText
-      .substring(NAME.length + process.env.PREFIX.length + 1,
-                 messageText.length)
+      .substring(
+          NAME.length + process.env.PREFIX.length + 1, messageText.length)
       .trim();
 
   if (serverName === message.guild.name) {
@@ -37,8 +37,9 @@ function generateSuccessEmbed(message, newServerName) {
   const oldServerName = message.guild.name;
   const guildMember = message.guild.members.cache.get(message.author.id);
   return new MessageEmbed()
-      .setAuthor(guildMember.displayName,
-                 guildMember.user.displayAvatarURL({dynamic: true}))
+      .setAuthor(
+          guildMember.displayName,
+          guildMember.user.displayAvatarURL({dynamic: true}))
       .setColor('#385028')
       .setThumbnail(message.guild.iconURL({dynamic: true}))
       .setTitle('Server Name Changed')
