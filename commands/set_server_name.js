@@ -12,6 +12,11 @@ async function execute(message, args) {
                  messageText.length)
       .trim();
 
+  if (serverName === message.guild.name) {
+    message.channel.send('>>> Server name is unchanged.');
+    return;
+  }
+
   if (serverName.includes('\n')) {
     message.channel.send('>>> Server names cannot contain a newline.');
     return;
@@ -32,7 +37,7 @@ async function execute(message, args) {
       .setThumbnail(message.guild.iconURL({dynamic: true}))
       .setTitle('Server Name Changed')
       .setDescription(
-          `${guildMember.displayName} changed the guild name from **${oldServerName}** to **${serverName}**`);
+          `${guildMember.displayName} changed the guild name from **${oldServerName}** to **${serverName}**.`);
   message.channel.send({embeds: [successEmbed]});
 }
 
