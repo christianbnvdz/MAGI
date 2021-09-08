@@ -1,4 +1,5 @@
 import process from 'process';
+import {MessageEmbed} from 'discord.js';
 
 const NAME = 'nickname';
 const USAGE = `Usage: ${process.env.PREFIX}${NAME} <userId | user mention> [nickname]`;
@@ -18,14 +19,26 @@ async function execute(message, args) {
     return;
   }
 
+  if (args.length === 1 && member.displayName === member.user.username) {
+    message.channel.send('>>> User does not have a nickname to remove.');
+    return;
+  }
+
+  const oldNickname = member.displayName;
   // Length of the prefix + length of the command name + the space + length of
   // userId or mention + 1 for space + 1 for first character in nickname
   // but - 1 to turn length into index.
-  const nickname = message.content.substring(
-      process.env.PREFIX.length + NAME.length + 1 + args[0].length + 1,
-      message.content.length).trim();
+  const nickname =
+      message.content
+          .substring(
+              process.env.PREFIX.length + NAME.length + 1 + args[0].length + 1,
+              message.content.length)
+          .trim();
 
-  if (nickname.length > 32) {
+  if (nickname === oldNickname) {
+    message.channel.send('>>> Nickname is the same as before.');
+    return;
+  } else if (nickname.length > 32) {
     message.channel.send('>>> Nickname must be 32 characters or less.');
     return;
   }
@@ -34,12 +47,31 @@ async function execute(message, args) {
     await member.setNickname(nickname);
   } catch (e) {
     message.channel.send(
-        '>>> Cannot change the nickname of a user with a higher role');
+        '>>> Cannot change the nickname of a user with a higher role than me.');
     return;
   }
+
+  message.channel.send(
+      {embeds: [generateSuccessEmbed(message, member, oldNickname, nickname)]});
 }
 
 export {NAME, USAGE, DESCRIPTION, TYPE, isValidCommand, execute};
+
+function generateSuccessEmbed(message, member, oldNickname, newNickname) {
+  const author = message.guild.members.cache.get(message.author.id);
+  const updateType = (newNickname.length) ? 'Updated' : 'Removed';
+  const descriptionTail = (newNickname.length) ?
+      ` from **${oldNickname}** to **${newNickname}**` :
+      `, **${oldNickname}**`;
+  return new MessageEmbed()
+      .setAuthor(
+          author.displayName, author.user.displayAvatarURL({dynamic: true}))
+      .setColor('#385028')
+      .setThumbnail(member.user.displayAvatarURL({dynamic: true}))
+      .setTitle('Nickname ' + updateType)
+      .setDescription(
+          `**${author.displayName}** ${updateType.toLowerCase()} **${member.user.username}**'s nickname${descriptionTail}.`);
+}
 
 // Takes a message and arg array
 // Returns a GuildMember or null if a valid userId or mention wasn't given
@@ -52,7 +84,7 @@ async function getGuildMember(message, args) {
   } else if (!isNaN(args[0])) {
     guildMember = await message.guild.members.fetch(args[0]);
   }
-  
+
   return guildMember;
 }
 
