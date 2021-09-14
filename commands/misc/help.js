@@ -1,10 +1,10 @@
 import process from 'process';
 import {MessageEmbed} from 'discord.js';
+import {CommandType} from './../../utils/command.js';
 
 const NAME = 'help';
 const USAGE = `Usage: ${process.env.PREFIX}${NAME} [command]`;
 const DESCRIPTION = 'Lists all commands. Prints the usage and description for a command if present.';
-const TYPE = 'MISC';
 function execute(message, args) {
   if (args.length === 1) {
     const command = message.client.commands.get(args[0]);
@@ -14,15 +14,15 @@ function execute(message, args) {
   }
 }
 
-export {NAME, USAGE, DESCRIPTION, TYPE, isValidCommand, execute};
+export {NAME, USAGE, DESCRIPTION, isValidCommand, execute};
 
 // Takes a message
 // Sends a message embed with the list off all commands
 async function sendCommandList (message) {
-  const adminCommands = getCommands(message.client.commands, 'ADMIN');
+  const adminCommands = getCommands(message.client.commands, CommandType.ADMIN);
   // More learning to be done before chatbot can be started
-  const chatCommands = getCommands(message.client.commands, 'CHAT');
-  const miscCommands = getCommands(message.client.commands, 'MISC');
+  const chatCommands = getCommands(message.client.commands, CommandType.CHAT);
+  const miscCommands = getCommands(message.client.commands, CommandType.MISC);
 
   const guild = await message.client.guilds.fetch(message.guildId);
   const guildClient = guild.me;
