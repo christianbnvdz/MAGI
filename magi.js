@@ -10,7 +10,7 @@ const INTENTS = [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES];
 config();
 
 const client = new Client({intents: INTENTS});
-const commands = loadCommands();
+client.commands = loadCommands();
 
 client.on('messageCreate', message => {
   if (!message.content.startsWith(process.env.PREFIX) || message.author.bot)
@@ -26,12 +26,14 @@ client.on('messageCreate', message => {
 
   const commandModule = client.commands.get(command);
 
+  if (!hasPermission(message, commandModule)) return;
+
   if (!commandModule.isValidCommand(args, message.channel)) return;
 
   commandModule.execute(message, args);
 });
 
-client.commands = await commands;
+client.commands = await client.commands;
 client.login(process.env.TOKEN);
 
 // Returns a collection promise containing all commands in the commands
@@ -47,7 +49,9 @@ async function loadCommands() {
 }
 
 // Returns a collection promise containing all commands in a command
-// subdirectory: admin, chat, or misc
+// subdirectory: admin, chat, or misc.
+// Note: This function also adds a new field to the imported command module
+// called TYPE which assigns the type based on what directory it is in
 async function loadCommandType(commandType) {
   const commands = new Collection();
   const commandFiles = (await readdir(`./commands/${commandType}`))
@@ -67,4 +71,17 @@ async function loadCommandType(commandType) {
   }
 
   return commands;
+}
+
+// Takes a Message and a commandModule
+// Returns true or false depending on whether the author has permission to
+// execute the command and sends a message to the channel if they dont
+function hasPermission(message, commandModule) {
+  if (commandModule.TYPE === CommandType.ADMIN &&
+      message.author.id !== message.guild.ownerId) {
+    message.channel.send('You must be the server owner to use this command.');
+    return false;
+  }
+
+  return true;
 }
