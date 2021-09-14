@@ -4,7 +4,6 @@ import {MessageEmbed} from 'discord.js';
 const NAME = 'nickname';
 const USAGE = `Usage: ${process.env.PREFIX}${NAME} <userId | user mention> [nickname]`;
 const DESCRIPTION = 'Changes the nickname of a user. Removes the current nickname from a user if none is provided.';
-const TYPE = 'ADMIN';
 async function execute(message, args) {
   let member;
 
@@ -55,7 +54,7 @@ async function execute(message, args) {
       {embeds: [generateSuccessEmbed(message, member, oldNickname, nickname)]});
 }
 
-export {NAME, USAGE, DESCRIPTION, TYPE, isValidCommand, execute};
+export {NAME, USAGE, DESCRIPTION, isValidCommand, execute};
 
 function generateSuccessEmbed(message, member, oldNickname, newNickname) {
   const author = message.guild.members.cache.get(message.author.id);

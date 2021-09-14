@@ -4,7 +4,6 @@ import {MessageEmbed} from 'discord.js';
 const NAME = 'set-server-name';
 const USAGE = `Usage: ${process.env.PREFIX}${NAME} <new server name>`;
 const DESCRIPTION = 'Changes the server name.';
-const TYPE = 'ADMIN';
 async function execute(message, args) {
   const messageText = message.content;
   const serverName = messageText
@@ -29,6 +28,8 @@ async function execute(message, args) {
   message.channel.send({embeds: [successEmbed]});
 }
 
+export {NAME, USAGE, DESCRIPTION, isValidCommand, execute};
+
 // Takes a Message and a server name
 // Generates an embed to send on succesful server name change
 // Note that when you call setName on a guild, the message gets changed
@@ -46,8 +47,6 @@ function generateSuccessEmbed(message, newServerName) {
       .setDescription(
           `**${guildMember.displayName}** changed the server name from **${oldServerName}** to **${newServerName}**.`);
 }
-
-export {NAME, USAGE, DESCRIPTION, TYPE, isValidCommand, execute};
 
 function isValidCommand(args, channel) {
   if (args.length === 0) {

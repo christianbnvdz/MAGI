@@ -3,7 +3,6 @@ import process from 'process';
 const NAME = 'pfp';
 const USAGE = `Usage: ${process.env.PREFIX}${NAME} <userId>`;
 const DESCRIPTION = 'Posts the specified user\'s profile picture to the channel.';
-const TYPE = 'MISC';
 async function execute(message, args) {
   try {
     const user = await message.client.users.fetch(args[0]);
@@ -19,7 +18,7 @@ async function execute(message, args) {
   }
 }
 
-export {NAME, USAGE, DESCRIPTION, TYPE, isValidCommand, execute};
+export {NAME, USAGE, DESCRIPTION, isValidCommand, execute};
 
 function isValidCommand(args, channel) {
   if (args.length !== 1) {
