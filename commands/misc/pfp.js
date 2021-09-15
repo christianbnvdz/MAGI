@@ -1,13 +1,11 @@
 /**
  * @module commands/misc/pfp
  */
-
 import process from 'process';
 
 const NAME = 'pfp';
 const USAGE = `Usage: ${process.env.PREFIX}${NAME} <userId>`;
 const DESCRIPTION = 'Posts the specified user\'s profile picture to the channel.';
-
 /**
  * Posts the url of the specified user's profile picture.
  * @param {Message} message - The Message that triggered this command.

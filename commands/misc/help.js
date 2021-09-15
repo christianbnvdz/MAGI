@@ -1,3 +1,6 @@
+/**
+ * @module commands/misc/help
+ */
 import process from 'process';
 import {MessageEmbed} from 'discord.js';
 import {CommandType} from './../../utils/command.js';
@@ -5,6 +8,13 @@ import {CommandType} from './../../utils/command.js';
 const NAME = 'help';
 const USAGE = `Usage: ${process.env.PREFIX}${NAME} [command]`;
 const DESCRIPTION = 'Lists all commands. Prints the usage and description for a command if present.';
+/**
+ * Posts a help message for the specified command. If no command was given,
+ * a list of commands is sent out as a message embed with commands separated
+ * by category.
+ * @param {Message} message - The Message that triggered this command.
+ * @param {string[]} args - The arguments passed to the command.
+ */
 function execute(message, args) {
   if (args.length === 1) {
     const command = message.client.commands.get(args[0]);
@@ -16,9 +26,11 @@ function execute(message, args) {
 
 export {NAME, USAGE, DESCRIPTION, isValidCommand, execute};
 
-// Takes a message
-// Sends a message embed with the list off all commands
-async function sendCommandList (message) {
+/**
+ * Sends a message embed with a list of commands organized into categories.
+ * @param {Message} message
+ */
+async function sendCommandList(message) {
   const adminCommands = getCommands(message.client.commands, CommandType.ADMIN);
   // More learning to be done before chatbot can be started
   const chatCommands = getCommands(message.client.commands, CommandType.CHAT);
@@ -42,12 +54,14 @@ async function sendCommandList (message) {
   message.channel.send({embeds: [commandsEmbed]});
 }
 
-// Takes a <Collection> (command name, command module) and a command type
-// Returns a string of command type commands in the format that we want to
-// display in the message embed.
-// Note, an empty string will result in an error when passed to the value field
-// of the object in the addFields method above. This is why there is a default
-// return value of '-'.
+/**
+ * Generates a string where each command name for a command type is on it's
+ * own line with the prefix. If there are no commands of that type then '-'
+ * is returned.
+ * @param {Collection<string, Object>} commands
+ * @param {CommandType} type
+ * @return {string}
+ */
 function getCommands(commands, type) {
   let commandString = '';
 
@@ -60,6 +74,13 @@ function getCommands(commands, type) {
   return commandString;
 }
 
+/**
+ * Checks to see if the command structure is valid without processing the
+ * arguments.
+ * @param {string[]} args
+ * @param {TextChannel} channel
+ * @return {boolean}
+ */
 function isValidCommand(args, channel) {
   if (args.length > 1) {
     channel.send(`>>> Too many arguments passed.\n${USAGE}`);
