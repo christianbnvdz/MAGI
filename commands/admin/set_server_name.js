@@ -1,9 +1,17 @@
+/**
+ * @module commands/admin/set_server_name
+ */
 import process from 'process';
 import {MessageEmbed} from 'discord.js';
 
 const NAME = 'set-server-name';
 const USAGE = `Usage: ${process.env.PREFIX}${NAME} <new server name>`;
 const DESCRIPTION = 'Changes the server name.';
+/**
+ * Sets the server name to the supplied name.
+ * @param {Message} message
+ * @param {string[]} args
+ */
 async function execute(message, args) {
   const messageText = message.content;
   const serverName = messageText
@@ -30,10 +38,12 @@ async function execute(message, args) {
 
 export {NAME, USAGE, DESCRIPTION, isValidCommand, execute};
 
-// Takes a Message and a server name
-// Generates an embed to send on succesful server name change
-// Note that when you call setName on a guild, the message gets changed
-// as well. So this function must be called before the call to setName
+/**
+ * Generates a MessageEmbed that denotes successful name change.
+ * This function must be called before the new name is set.
+ * @param {Message} message
+ * @param {string} newServerName
+ */
 function generateSuccessEmbed(message, newServerName) {
   const oldServerName = message.guild.name;
   const guildMember = message.guild.members.cache.get(message.author.id);
@@ -48,6 +58,13 @@ function generateSuccessEmbed(message, newServerName) {
           `**${guildMember.displayName}** changed the server name from **${oldServerName}** to **${newServerName}**.`);
 }
 
+/**
+ * Checks to see if the command structure is valid without processing the
+ * arguments.
+ * @param {string[]} args
+ * @param {TextChannel} channel
+ * @return {boolean}
+ */
 function isValidCommand(args, channel) {
   if (args.length === 0) {
     channel.send(`>>> You must provide a server name.\n${USAGE}`);
