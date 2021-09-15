@@ -1,3 +1,6 @@
+/**
+ * @module commands/admin/archive
+ */
 import {Buffer} from 'buffer';
 import {Collection} from 'discord.js';
 import {createReadStream, createWriteStream, existsSync} from 'fs';
@@ -20,12 +23,12 @@ const TAR_FILENAME = 'archive.tar';
 const NAME = 'archive';
 const USAGE = `Usage: ${process.env.PREFIX}${NAME} ((metadata | participants | complete) | (text (reactions | stickers | attachments | threads)* | whole-messages) [messages-only])`;
 const DESCRIPTION = 'Creates a .json representation of what you choose to archive and uploads it to the same channel that the command was executed in.\n\nmetadata - only captures guild and channel information.\nparticipants - only captures information about who has ever participated in the channel.\ncomplete - captures everything (see Capture Selection).\nhelp - will send the usage and this message to the channel.\n\nCapture Selection:\ntext - will capture only the textual content for each message. Follow up with "reactions", "stickers", "attachments", and/or "threads" to choose what else to capture.\nwhole-messages - captures everything.\nmessages-only - used to ignore metadata and participants since they are captured by default.\n\nOnly the guild owner can execute this command.';
+/**
+ * Generates and sends the channel's archive files.
+ * @param {Message} message
+ * @param {string[]} args
+ */
 async function execute(message, args) {
-  if (message.guild.ownerId !== message.author.id) {
-    message.channel.send('>>> Only the guild owner can execute this command.');
-    return;
-  }
-
   if (existsSync(`${message.channel.id}`)) {
     message.channel.send(
         `>>> Please wait for the current archive process to finish.`);
@@ -40,9 +43,13 @@ async function execute(message, args) {
 
 export {NAME, USAGE, DESCRIPTION, isValidCommand, execute};
 
-// Takes a Message and arg array
-// Generates all the archive files requested based on args
-// Returns a promise indicating all appropriate files were generated
+/**
+ * Dispatches the correct function to generate archive files based on the
+ * arguments.
+ * @param {Message} message
+ * @param {string[]} args
+ * @return {Promise} The promise indicates when all files have been generated.
+ */
 function generateArchiveFiles(message, args) {
   let completed;
 
@@ -74,9 +81,13 @@ function generateArchiveFiles(message, args) {
   return completed;
 }
 
-// Takes a TextChannel and an argument array
-// Generates the channel's files based on args
-// Returns a promise that indicates when files finish generating
+/**
+ * Generates channel archive files based on arguments.
+ * @param {TextChannel} channel
+ * @param {string[]} args
+ * @return {Promise} The promise indicates when all channel files have been
+ * generated.
+ */
 function generateChannelFiles(channel, args) {
   const filePromises = [];
 
@@ -88,9 +99,11 @@ function generateChannelFiles(channel, args) {
   return Promise.all(filePromises);
 }
 
-// Takes a TextChannel as input
-// Generates the metadata file for the channel
-// Returns a promise indicating the end of metadata file generation
+/**
+ * Generates the channel metadata archive file.
+ * @param {TextChannel}
+ * @return {Promise} Indicates when the metadata file has generated.
+ */
 function generateMetadataFile(channel) {
   const metadata = {
     guildId: channel.guild.id,

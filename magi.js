@@ -95,7 +95,8 @@ async function loadCommandType(commandType) {
 function hasPermission(message, commandModule) {
   if (commandModule.TYPE === CommandType.ADMIN &&
       message.author.id !== message.guild.ownerId) {
-    message.channel.send('You must be the server owner to use this command.');
+    message.channel.send(
+        '>>> You must be the server owner to use this command.');
     return false;
   }
 
