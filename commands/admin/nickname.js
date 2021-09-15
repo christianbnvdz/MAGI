@@ -1,9 +1,17 @@
+/**
+ * @module commands/admin/nickname
+ */
 import process from 'process';
 import {MessageEmbed} from 'discord.js';
 
 const NAME = 'nickname';
 const USAGE = `Usage: ${process.env.PREFIX}${NAME} <userId | user mention> [nickname]`;
 const DESCRIPTION = 'Changes the nickname of a user. Removes the current nickname from a user if none is provided.';
+/**
+ * Nicknames the specified user or removes a nickname if none is given.
+ * @param {Message} message
+ * @param {string[]} args
+ */
 async function execute(message, args) {
   let member;
 
@@ -56,6 +64,14 @@ async function execute(message, args) {
 
 export {NAME, USAGE, DESCRIPTION, isValidCommand, execute};
 
+/**
+ * Creates and returns a MessageEmbed as a response to successful nicknaming.
+ * @param {Message} message
+ * @param {GuildMember} member
+ * @param {string} oldNickname
+ * @param {string} newNickname
+ * @return {MessageEmbed}
+ */
 function generateSuccessEmbed(message, member, oldNickname, newNickname) {
   const author = message.guild.members.cache.get(message.author.id);
   const updateType = (newNickname.length) ? 'Updated' : 'Removed';
@@ -72,9 +88,14 @@ function generateSuccessEmbed(message, member, oldNickname, newNickname) {
           `**${author.displayName}** ${updateType.toLowerCase()} **${member.user.username}**'s nickname${descriptionTail}.`);
 }
 
-// Takes a message and arg array
-// Returns a GuildMember or null if a valid userId or mention wasn't given
-// This throws an invalid user error if the userId isn't valid
+/**
+ * Gets a GuildMember of the mentioned user or by ID. If the user can't be
+ * found then this returns null. This will throw an invalid user error
+ * if the userId isn't valid.
+ * @param {Message} message
+ * @param {string[]} args
+ * @return {GuildMember|null}
+ */
 async function getGuildMember(message, args) {
   let guildMember = null;
 
@@ -87,6 +108,13 @@ async function getGuildMember(message, args) {
   return guildMember;
 }
 
+/**
+ * Checks to see if the command structure is valid without processing the
+ * arguments.
+ * @param {string[]} args
+ * @param {TextChannel} channel
+ * @return {boolean}
+ */
 function isValidCommand(args, channel) {
   if (!args.length) {
     channel.send(`>>> No user specified.\n${USAGE}`);

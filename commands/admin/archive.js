@@ -1,3 +1,6 @@
+/**
+ * @module commands/admin/archive
+ */
 import {Buffer} from 'buffer';
 import {Collection} from 'discord.js';
 import {createReadStream, createWriteStream, existsSync} from 'fs';
@@ -20,12 +23,12 @@ const TAR_FILENAME = 'archive.tar';
 const NAME = 'archive';
 const USAGE = `Usage: ${process.env.PREFIX}${NAME} ((metadata | participants | complete) | (text (reactions | stickers | attachments | threads)* | whole-messages) [messages-only])`;
 const DESCRIPTION = 'Creates a .json representation of what you choose to archive and uploads it to the same channel that the command was executed in.\n\nmetadata - only captures guild and channel information.\nparticipants - only captures information about who has ever participated in the channel.\ncomplete - captures everything (see Capture Selection).\nhelp - will send the usage and this message to the channel.\n\nCapture Selection:\ntext - will capture only the textual content for each message. Follow up with "reactions", "stickers", "attachments", and/or "threads" to choose what else to capture.\nwhole-messages - captures everything.\nmessages-only - used to ignore metadata and participants since they are captured by default.\n\nOnly the guild owner can execute this command.';
+/**
+ * Generates and sends the channel's archive files.
+ * @param {Message} message
+ * @param {string[]} args
+ */
 async function execute(message, args) {
-  if (message.guild.ownerId !== message.author.id) {
-    message.channel.send('>>> Only the guild owner can execute this command.');
-    return;
-  }
-
   if (existsSync(`${message.channel.id}`)) {
     message.channel.send(
         `>>> Please wait for the current archive process to finish.`);
@@ -40,9 +43,13 @@ async function execute(message, args) {
 
 export {NAME, USAGE, DESCRIPTION, isValidCommand, execute};
 
-// Takes a Message and arg array
-// Generates all the archive files requested based on args
-// Returns a promise indicating all appropriate files were generated
+/**
+ * Dispatches the correct function to generate archive files based on the
+ * arguments.
+ * @param {Message} message
+ * @param {string[]} args
+ * @return {Promise} The promise indicates when all files have been generated.
+ */
 function generateArchiveFiles(message, args) {
   let completed;
 
@@ -74,9 +81,13 @@ function generateArchiveFiles(message, args) {
   return completed;
 }
 
-// Takes a TextChannel and an argument array
-// Generates the channel's files based on args
-// Returns a promise that indicates when files finish generating
+/**
+ * Generates channel archive files based on arguments.
+ * @param {TextChannel} channel
+ * @param {string[]} args
+ * @return {Promise} The promise indicates when all channel files have been
+ * generated.
+ */
 function generateChannelFiles(channel, args) {
   const filePromises = [];
 
@@ -88,9 +99,11 @@ function generateChannelFiles(channel, args) {
   return Promise.all(filePromises);
 }
 
-// Takes a TextChannel as input
-// Generates the metadata file for the channel
-// Returns a promise indicating the end of metadata file generation
+/**
+ * Generates the channel metadata archive file.
+ * @param {TextChannel}
+ * @return {Promise} Indicates when the metadata file has generated.
+ */
 function generateMetadataFile(channel) {
   const metadata = {
     guildId: channel.guild.id,
@@ -110,11 +123,13 @@ function generateMetadataFile(channel) {
       `${channel.id}/${METADATA_FILENAME}`, JSON.stringify(metadata), 'utf8');
 }
 
-// Takes a TextChannel
-// Sends the archive files to the channel after gzip and tar if need be
-// and deletes files after sending to channel
-// Returns a promise indicating succesful deletion of all files in
-// the directory called 'channel.id'
+/**
+ * Sends the archive files to the channel. Will tar and gzip as needed. All
+ * files that are generated eventually get deleted.
+ * @param {TextChannel} channel
+ * @return {Promise} Indicates when all generated files are sent and deleted
+ * from the bots files.
+ */
 async function sendArchiveFiles(channel) {
   const metadata_path = `${channel.id}/${METADATA_FILENAME}`;
   const participants_path = `${channel.id}/${PARTICIPANTS_FILENAME}`;
@@ -160,11 +175,13 @@ async function sendArchiveFiles(channel) {
   return Promise.all(deletionPromises);
 }
 
-// Takes a filepath
-// Compresses the given file and deletes the original file
-// Returns a promise indicating that the original file was deleted
-// implying that the file was gzipped as well.
-// The compressed file appends .gz to the filename given
+/**
+ * Compresses a file using gzip and deletes the original file. Produces a .gz
+ * file.
+ * @param {string} filepath
+ * @return {Promise} Indicates when the uncompressed file is deleted.
+ * This also implies that the file was gzipped.
+ */
 async function compressFile(filepath) {
   const gzip = createGzip();
   const source = createReadStream(filepath);
@@ -173,22 +190,32 @@ async function compressFile(filepath) {
   return rm(filepath);
 }
 
-// Takes a TextChannel, filepath, and filename
-// Sends the specified file to the channel and deletes it after sending
-// Returns a promise indicating successful deletion
-// implying successful send as well
+/**
+ * Sends a file to a channel. The file is deleted after it is sent.
+ * @param {TextChannel} channel
+ * @param {string} filepath
+ * @param {string} filename
+ * @return {Promise} Indicates that the file has been deleted. This implies that
+ * the file was sent.
+ */
 async function sendFile(channel, filepath, filename) {
   await channel.send({files: [{attachment: filepath, name: filename}]});
   return rm(filepath);
 }
 
-// Takes a TextChannel, arg array, and a bool denoting if this is a subchannel
-// Generates the message files and returns a promise indicating their generation
-// if this is not a subchannel. If it is a subchannel:
-// Returns a <Collection> (snowflake, messageObj) holding all messages in the
-// channel with the desired information and a new
-// <Collection> (user tag, participantObj) of participants in the channel as
-// [extracted messages collection, participant collection]
+/**
+ * Generates the message files and participants file if need be. This behaves
+ * differently if called on a subchannel (thread) where, instead, no files are
+ * generated and the extracted messages and participants are returned.
+ * @param {TextChannel} channel
+ * @param {string[]} args
+ * @param {boolean} isSubchannel - Defaults to false. If false, then this will
+ * generate files.
+ * @return {Promise|Collection<snowflake,Object>} If inSubchannel is false then
+ * the return value is a promise indicating that all files were generated. If
+ * true then the returned value is a Collection of extracted messages in a
+ * subchannel.
+ */
 async function generateMessageFiles(channel, args, inSubchannel = false) {
   let preparedMessages = new Collection();
   const participants = new Collection();
@@ -255,12 +282,16 @@ async function generateMessageFiles(channel, args, inSubchannel = false) {
                            [preparedMessages, participants];
 }
 
-// Takes a <Collection> (snowflake, Message) and an arg array
-// Extracts data specified in args from each message
-// in the collection.
-// Returns a <Collection> (snowflake, messageObj) and
-// <Collection> (user tag, participantObj) as
-// [extracted messages collection, participant collection]
+/**
+ * Based on args, extracts data from a message collection and builds a new
+ * message object with the selected data to gather.
+ * @param {Collection<snowflake,Message>} messageCollection
+ * @param {string[]} args
+ * @return {Collection[]} An array of
+ * two values is returned. The first value is a Collection holding the snowflake
+ * of the original message and the coresponding extracted message. The second is
+ * a participants Collection with a tag and object with the user's data.
+ */
 async function extractMessageData(messageCollection, args) {
   let extractedMessages = new Collection();
   const participants = new Collection();
@@ -314,9 +345,11 @@ async function extractMessageData(messageCollection, args) {
   return [extractedMessages, participants];
 }
 
-// Takes a Message
-// Extracts the stickers from a message and returns an array of
-// sticker objects that hold info about each sticker
+/**
+ * Extracts sticker data from a message.
+ * @param {Message} message
+ * @return {Object[]} Returns an array of sticker data objects.
+ */
 function getStickers(message) {
   const stickers = [];
 
@@ -334,9 +367,11 @@ function getStickers(message) {
   return stickers;
 }
 
-// Takes a Message
-// Extracts the attachments from a message and returns an
-// array of attachment objects that hold info about that attachment
+/**
+ * Extracts attachment data from a message.
+ * @param {Message} message
+ * @return {Object[]} Returns an array of attachment data objects.
+ */
 function getAttachments(message) {
   const attachments = [];
 
@@ -355,11 +390,15 @@ function getAttachments(message) {
   return attachments;
 }
 
-// Takes a Message
-// Also takes in a Collection of participants to update
-// in case a new participant is found.
-// Extracts reaction data and returns an object containing
-// each reaction and the users that reacted with it
+/**
+ * Extracts reaction data and updates the participant Collection, adding or
+ * updating the stored user data if it finds a new field or user not present in
+ * the Collection.
+ * @params {Message} message
+ * @params {Collection<tag,Object>} participants
+ * @return {Object} Returns an object where the field is the emoji and the
+ * value is an array of user tags who reacted with this emoji.
+ */
 async function getReactions(message, participants) {
   const reactionData = {};
   const reactions = message.reactions.cache;
@@ -372,10 +411,14 @@ async function getReactions(message, participants) {
   return reactionData;
 }
 
-// Takes a ReactionUserManager and a Collection
-// Returns an array contaning the tag of each user who
-// interacted with the reaction. Currently only a max of 100
-// users are gathered. No more than that will be captured
+/**
+ * Fetches an array of tags of users who reacted with that emoji.
+ * Updates the participants list if the participant fetched is not in the
+ * Collection already. Only 100 users max are captured.
+ * @param {ReactionUserManager} reactionManager
+ * @param {Collection<tag,Object>} participants
+ * @return {Object[]} Returns an array of user tags who reacted with the emoji.
+ */
 async function getReactors(reactionManager, participants) {
   const userData = [];
   const users = await reactionManager.fetch();
@@ -388,10 +431,11 @@ async function getReactors(reactionManager, participants) {
   return userData;
 }
 
-// Takes a Collection and a User
-// Checks to see if the User tag is in the participants collection
-// and adds them to it if they aren't
-// MODIFIES THE REFERENCED COLLECTION
+/**
+ * Updates the Collection if the user tag is not present.
+ * @param {Collection<tag,Object>} participantCollection
+ * @param {User} user
+ */
 function updateUserCollection(participantCollection, user) {
   if (!participantCollection.has(user.tag)) {
     const participant = {
@@ -404,19 +448,27 @@ function updateUserCollection(participantCollection, user) {
   }
 }
 
-// Takes a TextChannel and an optional snowflake
-// Gets messages from the channel sent before the specified snowflake.
-// If snowflake is null then starts from most recent message in the channel.
-// Returns a Promise of <Collection> (snowflake, message)
-// Messages in returned collection are from newest to oldest
+/**
+ * Fetches channel messages up to MESSAGE_FETCH_LIMIT. Messages fetched are from
+ * newest to oldest. If snowflake is null, messages are retrieved starting from
+ * the most recent in the channel.
+ * @param {TextChannel} channel
+ * @param {snowflake} snowflake
+ * @return {Promise} Indicates when the fetch completes.
+ */
 function getChannelMessages(channel, snowflake = null) {
   const fetchOptions = {limit: MESSAGE_FETCH_LIMIT, before: snowflake};
 
   return channel.messages.fetch(fetchOptions);
 }
 
-// Takes an arg array and TextChannel
-// Returns a bool denoting if the command structure is ok
+/**
+ * Checks to see if the command structure is valid without processing the
+ * arguments.
+ * @param {string[]} args
+ * @param {TextChannel} channel
+ * @return {boolean}
+ */
 function isValidCommand(args, channel) {
   if (!args.length) {
     channel.send(`>>> No argument provided.\n${USAGE}`);

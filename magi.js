@@ -36,8 +36,13 @@ client.on('messageCreate', message => {
 client.commands = await client.commands;
 client.login(process.env.TOKEN);
 
-// Returns a collection promise containing all commands in the commands
-// subdirectories admin, chat, and misc
+/**
+ * Loads all commands in the commands directory and subdirectories into a
+ * Collection.
+ * @returns {Promise<Collection<string,Object>>} A Promise to a Collection
+ * where the keys are the names of the commands and the Objects are the
+ * imported modules.
+ */
 async function loadCommands() {
   const adminCommands = loadCommandType(CommandType.ADMIN);
   const chatCommands = loadCommandType(CommandType.CHAT);
@@ -48,10 +53,17 @@ async function loadCommands() {
   return commands[0].concat(commands[1], commands[2]);
 }
 
-// Returns a collection promise containing all commands in a command
-// subdirectory: admin, chat, or misc.
-// Note: This function also adds a new field to the imported command module
-// called TYPE which assigns the type based on what directory it is in
+/**
+ * Loads all commands of the specified command type directory into a
+ * Collection. This also adds a new field to a copy of the imported command
+ * module called TYPE. Which is assigned the value of commandType and then
+ * placed into the Collection.
+ * @param {CommandType} commandType - The type of commands to
+ * load.
+ * @returns {Promise<Collection<string,Object>>} A Promise to a Collection
+ * where the keys are the names of the commands and the Objects are the
+ * imported modules.
+ */
 async function loadCommandType(commandType) {
   const commands = new Collection();
   const commandFiles = (await readdir(`./commands/${commandType}`))
@@ -73,13 +85,18 @@ async function loadCommandType(commandType) {
   return commands;
 }
 
-// Takes a Message and a commandModule
-// Returns true or false depending on whether the author has permission to
-// execute the command and sends a message to the channel if they dont
+/**
+ * Returns true if the user is allowed to use the command. If not, a message
+ * will be sent to the channel to let the user know they aren't allowed.
+ * @param {Message} message - The Message that was sent by the user.
+ * @param {Object} commandModule - The imported command module object.
+ * @returns {boolean}
+ */
 function hasPermission(message, commandModule) {
   if (commandModule.TYPE === CommandType.ADMIN &&
       message.author.id !== message.guild.ownerId) {
-    message.channel.send('You must be the server owner to use this command.');
+    message.channel.send(
+        '>>> You must be the server owner to use this command.');
     return false;
   }
 
