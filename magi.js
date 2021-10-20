@@ -13,24 +13,26 @@ const client = new Client({intents: INTENTS});
 client.commands = loadCommands();
 
 client.on('messageCreate', message => {
-  if (!message.content.startsWith(process.env.PREFIX) || message.author.bot)
+  if (!isCommandRequest(message)) return;
+
+  const {command, args} = splitRequestComponents(message);
+  const commandModule = getCommandModule(command);
+
+  if (!commandModule) {
     return;
+  }
 
-  const args = message.content.toLowerCase()
-                   .slice(process.env.PREFIX.length)
-                   .trim()
-                   .split(/\s+/);
-  const command = args.shift();
+  if (!authorHasPermission(message, commandModule)) {
+    return;
+  }
 
-  if (!client.commands.has(command)) return;
+  const tokenizedArgs = tokenizeArgs(args);
 
-  const commandModule = client.commands.get(command);
+  if (!tokenizedArgs) {
+    return;
+  }
 
-  if (!hasPermission(message, commandModule)) return;
-
-  if (!commandModule.isValidCommand(args, message.channel)) return;
-
-  commandModule.execute(message, args);
+  commandModule.execute(message, tokenizedArgs);
 });
 
 client.commands = await client.commands;
@@ -83,6 +85,18 @@ async function loadCommandType(commandType) {
   }
 
   return commands;
+}
+
+/**
+ * Indicates whether the command should be handled or ignored.
+ * @param {Message} message - The message from the message event.
+ * @returns {boolean}
+ */
+function isCommandRequest(message) {
+  if (!message.content.startsWith(process.env.PREFIX) || message.author.bot)
+    return false;
+
+  return true;
 }
 
 /**
