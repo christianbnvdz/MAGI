@@ -108,6 +108,7 @@ function isCommandRequest(message) {
 /**
  * Splits a message body into two strings at the first space.
  * If none then the command is returned along with "" as the arg string.
+ * Intended for use after isCommandRequest().
  * @param {Message} message
  * @returns {[string, string]}
  */
@@ -118,6 +119,16 @@ function splitRequestComponents(message) {
   if (spaceIndex === -1) return [command.slice(1), ""];
 
   return [command.slice(1, spaceIndex), command.slice(spaceIndex + 1)];
+}
+
+/**
+ * Gets the specified command module from the client. Returns null if
+ * it is not found.
+ * @param {String} command - the name of the command
+ * @returns {Object | null}
+ */
+function getCommandModule(command) {
+  return client.commands.has(command) ? client.commands.get(command) : null;
 }
 
 /**
