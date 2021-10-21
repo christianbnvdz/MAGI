@@ -15,7 +15,7 @@ client.commands = loadCommands();
 client.on('messageCreate', message => {
   if (!isCommandRequest(message)) return;
 
-  const {command, argString} = splitRequestComponents(message);
+  const [command, argString] = splitRequestComponents(message);
   const commandModule = getCommandModule(command);
 
   if (!commandModule) {
@@ -102,7 +102,7 @@ function isCommandRequest(message) {
   if (message.author.bot ||
       !message.content.startsWith(process.env.PREFIX) ||
       message.content.length == 1 ||
-      message.content.match(new RegExp(`^${process.env.PREFIX}\s`)))
+      message.content.match(new RegExp(`^${process.env.PREFIX}\\s`)))
     return false;
 
   return true;
@@ -154,5 +154,5 @@ function authorHasPermission(message, commandModule) {
  * @returns {String[]}
  */
 function tokenizeArgs(argString) {
-  return argString.split(' ');
+  return (argString === '') ? [] : argString.split(' ');
 }
