@@ -140,7 +140,7 @@ function getCommandModule(command) {
  * @param {Object} commandModule - The imported command module object.
  * @returns {boolean}
  */
-function hasPermission(message, commandModule) {
+function authorHasPermission(message, commandModule) {
   if (commandModule.TYPE === CommandType.ADMIN &&
       message.author.id !== message.guild.ownerId)
     return false;
