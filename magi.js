@@ -19,16 +19,19 @@ client.on('messageCreate', message => {
   const commandModule = getCommandModule(command);
 
   if (!commandModule) {
+    message.channel.send(`>>> Unrecognized command.`);
     return;
   }
 
   if (!authorHasPermission(message, commandModule)) {
+    message.channel.send(`>>> You don't have permission to use this command.`);
     return;
   }
 
   const tokenizedArgs = tokenizeArgs(argString);
 
   if (tokenizedArgs === null) {
+    message.channel.send(`>>> Malformed arguments.`);
     return;
   }
 
