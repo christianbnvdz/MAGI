@@ -90,6 +90,8 @@ async function loadCommandType(commandType) {
 /**
  * Indicates whether the command should be handled or ignored. This
  * function determines whether a message is just a message or a command.
+ * If whitespace immediately follows the prefix then it is not considered a
+ * command.
  * @param {Message} message - The message from the message event.
  * @returns {boolean}
  */
@@ -104,13 +106,18 @@ function isCommandRequest(message) {
 }
 
 /**
- * Splits a message body into two strings after the first string of non
- * whitespace character(s) after the PREFIX.
+ * Splits a message body into two strings at the first space.
+ * If none then the command is returned along with "" as the arg string.
  * @param {Message} message
  * @returns {[string, string]}
  */
 function splitRequestComponents(message) {
-  
+  const command = message.content;
+  const spaceIndex = command.indexOf(' ');
+
+  if (spaceIndex === -1) return [command, ""];
+
+  return [command.slice(0, spaceIndex), command.slice(spaceIndex + 1)];
 }
 
 /**
