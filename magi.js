@@ -15,7 +15,7 @@ client.commands = loadCommands();
 client.on('messageCreate', message => {
   if (!isCommandRequest(message)) return;
 
-  const {command, args} = splitRequestComponents(message);
+  const {command, argString} = splitRequestComponents(message);
   const commandModule = getCommandModule(command);
 
   if (!commandModule) {
@@ -26,9 +26,9 @@ client.on('messageCreate', message => {
     return;
   }
 
-  const tokenizedArgs = tokenizeArgs(args);
+  const tokenizedArgs = tokenizeArgs(argString);
 
-  if (!tokenizedArgs) {
+  if (tokenizedArgs === null) {
     return;
   }
 
@@ -88,15 +88,29 @@ async function loadCommandType(commandType) {
 }
 
 /**
- * Indicates whether the command should be handled or ignored.
+ * Indicates whether the command should be handled or ignored. This
+ * function determines whether a message is just a message or a command.
  * @param {Message} message - The message from the message event.
  * @returns {boolean}
  */
 function isCommandRequest(message) {
-  if (!message.content.startsWith(process.env.PREFIX) || message.author.bot)
+  if (message.author.bot ||
+      !message.content.startsWith(process.env.PREFIX) ||
+      message.content.length == 1 ||
+      message.content.match(new RegExp(`^${process.env.PREFIX}\s`)))
     return false;
 
   return true;
+}
+
+/**
+ * Splits a message body into two strings after the first string of non
+ * whitespace character(s) after the PREFIX.
+ * @param {Message} message
+ * @returns {[string, string]}
+ */
+function splitRequestComponents(message) {
+  
 }
 
 /**
