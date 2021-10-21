@@ -144,3 +144,12 @@ function hasPermission(message, commandModule) {
 
   return true;
 }
+
+/**
+ * Tokenize the arguments.
+ * @param {String} argString
+ * @returns {String[]}
+ */
+function tokenizeArgs(argString) {
+  return argString.split(' ');
+}
