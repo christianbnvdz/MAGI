@@ -13,6 +13,8 @@ const DESCRIPTION = 'Changes the server name.';
  * @param {string[]} args
  */
 async function execute(message, args) {
+  if (!isValidCommand(args, message.channel)) return;
+
   const messageText = message.content;
   const serverName = messageText
       .substring(

@@ -13,6 +13,8 @@ const DESCRIPTION = 'Changes the nickname of a user. Removes the current nicknam
  * @param {string[]} args
  */
 async function execute(message, args) {
+  if (!isValidCommand(args, message.channel)) return;
+
   let member;
 
   try {
