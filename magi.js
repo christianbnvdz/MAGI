@@ -132,19 +132,15 @@ function getCommandModule(command) {
 }
 
 /**
- * Returns true if the user is allowed to use the command. If not, a message
- * will be sent to the channel to let the user know they aren't allowed.
+ * Returns true if the user is allowed to use the command.
  * @param {Message} message - The Message that was sent by the user.
  * @param {Object} commandModule - The imported command module object.
  * @returns {boolean}
  */
 function hasPermission(message, commandModule) {
   if (commandModule.TYPE === CommandType.ADMIN &&
-      message.author.id !== message.guild.ownerId) {
-    message.channel.send(
-        '>>> You must be the server owner to use this command.');
+      message.author.id !== message.guild.ownerId)
     return false;
-  }
 
   return true;
 }
