@@ -115,9 +115,9 @@ function splitRequestComponents(message) {
   const command = message.content;
   const spaceIndex = command.indexOf(' ');
 
-  if (spaceIndex === -1) return [command, ""];
+  if (spaceIndex === -1) return [command.slice(1), ""];
 
-  return [command.slice(0, spaceIndex), command.slice(spaceIndex + 1)];
+  return [command.slice(1, spaceIndex), command.slice(spaceIndex + 1)];
 }
 
 /**
