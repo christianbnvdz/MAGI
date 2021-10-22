@@ -26,7 +26,7 @@ function execute(message, args) {
   }
 }
 
-export {NAME, USAGE, DESCRIPTION, isValidCommand, execute};
+export {NAME, USAGE, DESCRIPTION, execute};
 
 /**
  * Sends a message embed with a list of commands organized into categories.

@@ -28,7 +28,7 @@ async function execute(message, args) {
   }
 }
 
-export {NAME, USAGE, DESCRIPTION, isValidCommand, execute};
+export {NAME, USAGE, DESCRIPTION, execute};
 
 /**
  * Checks to see if the command structure is valid without processing the

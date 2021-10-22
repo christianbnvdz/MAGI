@@ -43,7 +43,7 @@ async function execute(message, args) {
   rmdir(message.channel.id);
 }
 
-export {NAME, USAGE, DESCRIPTION, isValidCommand, execute};
+export {NAME, USAGE, DESCRIPTION, execute};
 
 /**
  * Dispatches the correct function to generate archive files based on the

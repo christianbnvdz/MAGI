@@ -64,7 +64,7 @@ async function execute(message, args) {
       {embeds: [generateSuccessEmbed(message, member, oldNickname, nickname)]});
 }
 
-export {NAME, USAGE, DESCRIPTION, isValidCommand, execute};
+export {NAME, USAGE, DESCRIPTION, execute};
 
 /**
  * Creates and returns a MessageEmbed as a response to successful nicknaming.

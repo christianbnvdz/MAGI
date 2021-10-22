@@ -38,7 +38,7 @@ async function execute(message, args) {
   message.channel.send({embeds: [successEmbed]});
 }
 
-export {NAME, USAGE, DESCRIPTION, isValidCommand, execute};
+export {NAME, USAGE, DESCRIPTION, execute};
 
 /**
  * Generates a MessageEmbed that denotes successful name change.
