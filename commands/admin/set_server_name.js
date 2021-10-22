@@ -13,6 +13,8 @@ const DESCRIPTION = 'Changes the server name.';
  * @param {string[]} args
  */
 async function execute(message, args) {
+  if (!isValidCommand(args, message.channel)) return;
+
   const messageText = message.content;
   const serverName = messageText
       .substring(
@@ -36,7 +38,7 @@ async function execute(message, args) {
   message.channel.send({embeds: [successEmbed]});
 }
 
-export {NAME, USAGE, DESCRIPTION, isValidCommand, execute};
+export {NAME, USAGE, DESCRIPTION, execute};
 
 /**
  * Generates a MessageEmbed that denotes successful name change.

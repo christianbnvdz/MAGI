@@ -12,6 +12,8 @@ const DESCRIPTION = 'Posts the specified user\'s profile picture to the channel.
  * @param {string[]} args - The arguments passed to the command.
  */
 async function execute(message, args) {
+  if (!isValidCommand(args, message.channel)) return;
+
   try {
     const user = await message.client.users.fetch(args[0]);
     message.channel.send(user.displayAvatarURL({dynamic: true}));
@@ -26,7 +28,7 @@ async function execute(message, args) {
   }
 }
 
-export {NAME, USAGE, DESCRIPTION, isValidCommand, execute};
+export {NAME, USAGE, DESCRIPTION, execute};
 
 /**
  * Checks to see if the command structure is valid without processing the

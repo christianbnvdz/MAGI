@@ -13,24 +13,29 @@ const client = new Client({intents: INTENTS});
 client.commands = loadCommands();
 
 client.on('messageCreate', message => {
-  if (!message.content.startsWith(process.env.PREFIX) || message.author.bot)
+  if (!isCommandRequest(message)) return;
+
+  const [command, argString] = splitRequestComponents(message);
+  const commandModule = getCommandModule(command);
+
+  if (!commandModule) {
+    message.channel.send(`>>> Unrecognized command.`);
     return;
+  }
 
-  const args = message.content.toLowerCase()
-                   .slice(process.env.PREFIX.length)
-                   .trim()
-                   .split(/\s+/);
-  const command = args.shift();
+  if (!authorHasPermission(message, commandModule)) {
+    message.channel.send(`>>> You don't have permission to use this command.`);
+    return;
+  }
 
-  if (!client.commands.has(command)) return;
+  const tokenizedArgs = tokenizeArgs(argString);
 
-  const commandModule = client.commands.get(command);
+  if (tokenizedArgs === null) {
+    message.channel.send(`>>> Malformed arguments.`);
+    return;
+  }
 
-  if (!hasPermission(message, commandModule)) return;
-
-  if (!commandModule.isValidCommand(args, message.channel)) return;
-
-  commandModule.execute(message, args);
+  commandModule.execute(message, tokenizedArgs);
 });
 
 client.commands = await client.commands;
@@ -86,19 +91,68 @@ async function loadCommandType(commandType) {
 }
 
 /**
- * Returns true if the user is allowed to use the command. If not, a message
- * will be sent to the channel to let the user know they aren't allowed.
+ * Indicates whether the command should be handled or ignored. This
+ * function determines whether a message is just a message or a command.
+ * If whitespace immediately follows the prefix then it is not considered a
+ * command.
+ * @param {Message} message - The message from the message event.
+ * @returns {boolean}
+ */
+function isCommandRequest(message) {
+  if (message.author.bot ||
+      !message.content.startsWith(process.env.PREFIX) ||
+      message.content.length == 1 ||
+      message.content.match(new RegExp(`^${process.env.PREFIX}\\s`)))
+    return false;
+
+  return true;
+}
+
+/**
+ * Splits a message body into two strings at the first space.
+ * If none then the command is returned along with "" as the arg string.
+ * Intended for use after isCommandRequest().
+ * @param {Message} message
+ * @returns {[string, string]}
+ */
+function splitRequestComponents(message) {
+  const command = message.content;
+  const spaceIndex = command.indexOf(' ');
+
+  if (spaceIndex === -1) return [command.slice(1), ""];
+
+  return [command.slice(1, spaceIndex), command.slice(spaceIndex + 1)];
+}
+
+/**
+ * Gets the specified command module from the client. Returns null if
+ * it is not found.
+ * @param {String} command - the name of the command
+ * @returns {Object | null}
+ */
+function getCommandModule(command) {
+  return client.commands.has(command) ? client.commands.get(command) : null;
+}
+
+/**
+ * Returns true if the user is allowed to use the command.
  * @param {Message} message - The Message that was sent by the user.
  * @param {Object} commandModule - The imported command module object.
  * @returns {boolean}
  */
-function hasPermission(message, commandModule) {
+function authorHasPermission(message, commandModule) {
   if (commandModule.TYPE === CommandType.ADMIN &&
-      message.author.id !== message.guild.ownerId) {
-    message.channel.send(
-        '>>> You must be the server owner to use this command.');
+      message.author.id !== message.guild.ownerId)
     return false;
-  }
 
   return true;
+}
+
+/**
+ * Tokenize the arguments.
+ * @param {String} argString
+ * @returns {String[]}
+ */
+function tokenizeArgs(argString) {
+  return (argString === '') ? [] : argString.split(' ');
 }

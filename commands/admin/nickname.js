@@ -13,6 +13,8 @@ const DESCRIPTION = 'Changes the nickname of a user. Removes the current nicknam
  * @param {string[]} args
  */
 async function execute(message, args) {
+  if (!isValidCommand(args, message.channel)) return;
+
   let member;
 
   try {
@@ -62,7 +64,7 @@ async function execute(message, args) {
       {embeds: [generateSuccessEmbed(message, member, oldNickname, nickname)]});
 }
 
-export {NAME, USAGE, DESCRIPTION, isValidCommand, execute};
+export {NAME, USAGE, DESCRIPTION, execute};
 
 /**
  * Creates and returns a MessageEmbed as a response to successful nicknaming.

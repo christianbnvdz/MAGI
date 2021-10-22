@@ -29,6 +29,8 @@ const DESCRIPTION = 'Creates a .json representation of what you choose to archiv
  * @param {string[]} args
  */
 async function execute(message, args) {
+  if (!isValidCommand(args, message.channel)) return;
+
   if (existsSync(`${message.channel.id}`)) {
     message.channel.send(
         `>>> Please wait for the current archive process to finish.`);
@@ -41,7 +43,7 @@ async function execute(message, args) {
   rmdir(message.channel.id);
 }
 
-export {NAME, USAGE, DESCRIPTION, isValidCommand, execute};
+export {NAME, USAGE, DESCRIPTION, execute};
 
 /**
  * Dispatches the correct function to generate archive files based on the

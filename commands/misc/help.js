@@ -16,6 +16,8 @@ const DESCRIPTION = 'Lists all commands. Prints the usage and description for a 
  * @param {string[]} args - The arguments passed to the command.
  */
 function execute(message, args) {
+  if (!isValidCommand(args, message.channel)) return;
+
   if (args.length === 1) {
     const command = message.client.commands.get(args[0]);
     message.channel.send(`>>> ${command.USAGE}\n${command.DESCRIPTION}`);
@@ -24,7 +26,7 @@ function execute(message, args) {
   }
 }
 
-export {NAME, USAGE, DESCRIPTION, isValidCommand, execute};
+export {NAME, USAGE, DESCRIPTION, execute};
 
 /**
  * Sends a message embed with a list of commands organized into categories.
