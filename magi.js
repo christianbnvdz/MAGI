@@ -30,7 +30,7 @@ client.on('messageCreate', message => {
 
   const tokenizedArgs = tokenizeArgs(argString);
 
-  if (tokenizedArgs === null) {
+  if (!tokenizedArgs) {
     message.channel.send(`>>> Malformed arguments.`);
     return;
   }
@@ -119,9 +119,9 @@ function splitRequestComponents(message) {
   const command = message.content;
   const spaceIndex = command.indexOf(' ');
 
-  if (spaceIndex === -1) return [command.slice(1), ""];
+  if (spaceIndex === -1) return [command.slice(1), ''];
 
-  return [command.slice(1, spaceIndex), command.slice(spaceIndex + 1)];
+  return [command.slice(1, spaceIndex), command.slice(spaceIndex + 1).trim()];
 }
 
 /**
@@ -149,10 +149,33 @@ function authorHasPermission(message, commandModule) {
 }
 
 /**
- * Tokenize the arguments.
+ * Tokenize the arguments. Unescaped double quotes are used to preserve
+ * whitespace. If double quotes contain only whitespace or nothing then its
+ * not counted as an argument. Whitespace surrounding the argument within
+ * double quotes is trimmed. Whitespace strings anywhere are treated as 1 space.
+ * Tokenizing happens first, unescaped characters and certain
+ * whitespace characters are omitted, and finally escaped characters are
+ * replaced. Escape " with \" and \ with \\.
+ * An error occurs if:
+ *   1| the opening unescaped double quote is not preceeded by whitespace
+ *   2| the closing unescaped double quote is not followed by whitespace
+ *   3| there exists an unclosed unescaped double quote
+ *   4| an escape is used with a non escapable character (not \" or \\)
+ * If no arguments are passed then an empty array is
+ * returned. If a tokenizing error occurs then null is returned.
  * @param {String} argString
- * @returns {String[]}
+ * @returns {String[] | null}
  */
 function tokenizeArgs(argString) {
-  return (argString === '') ? [] : argString.split(' ');
+  if (argString === '') return [];
+
+  return argString.split(' ');
 }
+
+// Trim and replace all whitespace with one whitespace
+// Split by ' ' into an array
+// In each element, check for errors #1-4
+// Purge array of elements consisting of "" or " "
+// Group / Expand array elements into one argument
+// Replace escaped characters and drop double quotes from arguments
+// Trim resulting arguments for surrounding whitespace
