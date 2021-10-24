@@ -35,7 +35,7 @@ client.on('messageCreate', message => {
     return;
   }
 
-  commandModule.execute(message, tokenizedArgs);
+  //commandModule.execute(message, tokenizedArgs);
 });
 
 client.commands = await client.commands;
@@ -167,15 +167,42 @@ function authorHasPermission(message, commandModule) {
  * @returns {String[] | null}
  */
 function tokenizeArgs(argString) {
+  argString = argString.trim();
   if (argString === '') return [];
+
+  let unclosedDoubleQuote = false;
+  for (let i = 0; i < argString.length; ++i) {
+    // Check to see if previous character is an escape and check for error 4
+    if (i !== 0 && argString[i - 1] === '\\') {
+      if (argString[i] !== '\\' && argString[i] !== '"') return null;
+      continue;
+    }
+
+    // By logic above, this is not escaped
+    if (argString[i] === '"') {
+      // Checking for error 1 and 2
+      if ((!unclosedDoubleQuote && i !== 0 && argString[i - 1] !== ' ') ||
+          (unclosedDoubleQuote && i !== argString.length - 2 &&
+           argString[i + 1] !== ' '))
+        return null;
+
+      unclosedDoubleQuote = !unclosedDoubleQuote;
+    }
+  }
+  // Check for error 3
+  if (unclosedDoubleQuote) {
+    return null;
+  }
 
   return argString.split(' ');
 }
 
-// Trim and replace all whitespace with one whitespace
-// Split by ' ' into an array
+// Tokens: 
+
+// Trim and split by ' ' into an array
 // In each element, check for errors #1-4
 // Purge array of elements consisting of "" or " "
 // Group / Expand array elements into one argument
 // Replace escaped characters and drop double quotes from arguments
 // Trim resulting arguments for surrounding whitespace
+
