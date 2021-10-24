@@ -170,27 +170,49 @@ function tokenizeArgs(argString) {
   argString = argString.trim();
   if (argString === '') return [];
 
+  console.log(argString);
+
   let unclosedDoubleQuote = false;
   for (let i = 0; i < argString.length; ++i) {
     // Check to see if previous character is an escape and check for error 4
-    if (i !== 0 && argString[i - 1] === '\\') {
-      if (argString[i] !== '\\' && argString[i] !== '"') return null;
-      continue;
+    if (i === 1) { // Possibility for an escape
+      if (argString[i - 1] === '\\') {
+        if (argString[i] !== '\\' && argString[i] !== '"') {
+          console.log('Unrecognized escape character: i == 1');
+          return null;
+        }
+      }
+    } else if (i > 1) { // Possibility for an escape or escaped backslash
+      if (argString[i - 1] === '\\' && argString[i - 2] !== '\\') {
+        if (argString[i] !== '\\' && argString[i] !== '"') {
+          console.log('Unrecognized escape character: i > 1');
+          return null;
+        }
+      }
     }
 
     // By logic above, this is not escaped
     if (argString[i] === '"') {
-      // Checking for error 1 and 2
-      if ((!unclosedDoubleQuote && i !== 0 && argString[i - 1] !== ' ') ||
-          (unclosedDoubleQuote && i !== argString.length - 2 &&
-           argString[i + 1] !== ' '))
-        return null;
+      // Check for errors 1 and 2
+      if (!unclosedDoubleQuote && i !== 0) { // Opening Double Quote
+        if (!('' + argString[i - 1]).match('\s')) {
+          console.log('Opening double quote is not preceeded by whitespace.');
+          return null;
+        }
+      } else if (unclosedDoubleQuote && i !== argString.length - 1) { // Closing Double Quote
+        if (!('' + argString[i + 1]).match('\s')) {
+          console.log('Closing double quote is not followed by whitespace.');
+          return null;
+        }
+      }
 
       unclosedDoubleQuote = !unclosedDoubleQuote;
     }
+
   }
   // Check for error 3
   if (unclosedDoubleQuote) {
+    console.log('Uneven number of unescaped double quotes');
     return null;
   }
 
@@ -205,4 +227,3 @@ function tokenizeArgs(argString) {
 // Group / Expand array elements into one argument
 // Replace escaped characters and drop double quotes from arguments
 // Trim resulting arguments for surrounding whitespace
-
