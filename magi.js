@@ -181,6 +181,7 @@ function tokenizeArgs(argString) {
           console.log('Unrecognized escape character: i == 1');
           return null;
         }
+        continue;
       }
     } else if (i > 1) { // Possibility for an escape or escaped backslash
       if (argString[i - 1] === '\\' && argString[i - 2] !== '\\') {
@@ -188,6 +189,7 @@ function tokenizeArgs(argString) {
           console.log('Unrecognized escape character: i > 1');
           return null;
         }
+        continue;
       }
     }
 
@@ -195,12 +197,15 @@ function tokenizeArgs(argString) {
     if (argString[i] === '"') {
       // Check for errors 1 and 2
       if (!unclosedDoubleQuote && i !== 0) { // Opening Double Quote
-        if (!('' + argString[i - 1]).match('\s')) {
+        console.log(('' + argString[i - 1]).match('\\s'));
+        if (!(('' + argString[i - 1]).match('\\s'))) {
           console.log('Opening double quote is not preceeded by whitespace.');
           return null;
         }
       } else if (unclosedDoubleQuote && i !== argString.length - 1) { // Closing Double Quote
-        if (!('' + argString[i + 1]).match('\s')) {
+        console.log(('' + argString[i + 1]));
+        console.log(argString[i + 1]);
+        if (!(('' + argString[i + 1]).match('\\s'))) {
           console.log('Closing double quote is not followed by whitespace.');
           return null;
         }
