@@ -151,11 +151,8 @@ function authorHasPermission(message, commandModule) {
 /**
  * Tokenize the arguments. Unescaped double quotes are used to preserve
  * whitespace. If double quotes contain only whitespace or nothing then its
- * not counted as an argument. Whitespace surrounding the argument within
- * double quotes is trimmed. Whitespace strings anywhere are treated as 1 space.
- * Tokenizing happens first, unescaped characters and certain
- * whitespace characters are omitted, and finally escaped characters are
- * replaced. Escape " with \" and \ with \\.
+ * not counted as an argument. Escaped characters are expanded as they are
+ * encountered: \\ and \".
  * An error occurs if:
  *   1| the opening unescaped double quote is not preceeded by whitespace
  *   2| the closing unescaped double quote is not followed by whitespace
@@ -171,12 +168,11 @@ function tokenizeArgs(argString) {
   argString = argString.trim();
   if (argString === '') return [];
 
-  console.log(argString);
-
   const args = [];
   let tokenizedArg = '';
   let unclosedDoubleQuote = false;
   let inEscape = false;
+
   for (let i = 0; i < argString.length; ++i) {
     // Check for error 4
     if (!inEscape && argString[i] === '\\') {
@@ -207,7 +203,8 @@ function tokenizeArgs(argString) {
           tokenizedArg = '';
         }
       } else if (unclosedDoubleQuote) { // Closing Double Quote
-        if (i !== argString.length - 1 && !(('' + argString[i + 1]).match('\\s'))) {
+        if (i !== argString.length - 1 &&
+            !(('' + argString[i + 1]).match('\\s'))) {
           console.log('Closing double quote is not followed by whitespace.');
           return null;
         }
@@ -230,7 +227,7 @@ function tokenizeArgs(argString) {
     }
   }
 
-  // Check for error 3 and 5
+  // Check for errors 3 and 5
   if (unclosedDoubleQuote) {
     console.log('Uneven number of unescaped double quotes');
     return null;
@@ -239,21 +236,11 @@ function tokenizeArgs(argString) {
     return null;
   }
 
-  // If the last argument is not surrounded by an unescaped double quote
+  // If the last argument is not surrounded by unescaped double quotes
   if (tokenizedArg !== '') {
     args.push(tokenizedArg);
     tokenizedArg === '';
   }
 
-  console.log(args);
   return args;
 }
-
-// Tokens: 
-
-// Trim and split by ' ' into an array
-// In each element, check for errors #1-4
-// Purge array of elements consisting of "" or " "
-// Group / Expand array elements into one argument
-// Replace escaped characters and drop double quotes from arguments
-// Trim resulting arguments for surrounding whitespace
