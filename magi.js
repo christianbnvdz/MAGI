@@ -28,10 +28,10 @@ client.on('messageCreate', message => {
     return;
   }
 
-  const tokenizedArgs = tokenizeArgs(argString);
+  const [err, tokenizedArgs] = tokenizeArgs(argString);
 
-  if (!tokenizedArgs) {
-    message.channel.send(`>>> Malformed arguments.`);
+  if (err) {
+    message.channel.send(`>>> ${tokenizedArgs}.`);
     return;
   }
 
@@ -160,13 +160,16 @@ function authorHasPermission(message, commandModule) {
  *   4| an escape is used with a non escapable character (not \" or \\)
  *   5| no character follows an escape at the end of argument string
  * If no arguments are passed then an empty array is
- * returned. If a tokenizing error occurs then null is returned.
+ * returned. If a tokenizing error occurs then the first element is set to
+ * true, indicating an error occured. The second element is a string indicating
+ * what error occured. If false then the first element is false and the second
+ * element is the tokenized arguments.
  * @param {String} argString
- * @returns {String[] | null}
+ * @returns {[boolean, string[]] | [boolean, string]}
  */
 function tokenizeArgs(argString) {
   argString = argString.trim();
-  if (argString === '') return [];
+  if (argString === '') return [false, []];
 
   const args = [];
   let tokenizedArg = '';
@@ -185,8 +188,7 @@ function tokenizeArgs(argString) {
       tokenizedArg += argString[i];
       continue;
     } else if (inEscape) {
-      console.log('Unrecognized escape character.');
-      return null;
+      return [true, `Unrecognized escape character: ${argString[i]}`];
     }
 
     // By logic above, this is not escaped
@@ -194,8 +196,7 @@ function tokenizeArgs(argString) {
       // Check for errors 1 and 2
       if (!unclosedDoubleQuote) { // Opening Double Quote
         if (i !== 0 && !(('' + argString[i - 1]).match('\\s'))) {
-          console.log('Opening double quote is not preceeded by whitespace.');
-          return null;
+          return [true, 'Opening double quote not preceeded by whitespace'];
         }
 
         if (tokenizedArg !== '') {
@@ -205,8 +206,7 @@ function tokenizeArgs(argString) {
       } else if (unclosedDoubleQuote) { // Closing Double Quote
         if (i !== argString.length - 1 &&
             !(('' + argString[i + 1]).match('\\s'))) {
-          console.log('Closing double quote is not followed by whitespace.');
-          return null;
+          return [true, 'Closing double quote not followed by whitespace'];
         }
 
         if (!tokenizedArg.match('^\\s*$')) {
@@ -229,11 +229,9 @@ function tokenizeArgs(argString) {
 
   // Check for errors 3 and 5
   if (unclosedDoubleQuote) {
-    console.log('Uneven number of unescaped double quotes');
-    return null;
+    return [true, 'Missing closing double quote'];
   } else if (inEscape) {
-    console.log('No character following escape.');
-    return null;
+    return [true, 'No character following escape at end of arguments'];
   }
 
   // If the last argument is not surrounded by unescaped double quotes
@@ -242,5 +240,5 @@ function tokenizeArgs(argString) {
     tokenizedArg === '';
   }
 
-  return args;
+  return [false, args];
 }
