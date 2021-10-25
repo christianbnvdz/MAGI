@@ -28,10 +28,10 @@ client.on('messageCreate', message => {
     return;
   }
 
-  const tokenizedArgs = tokenizeArgs(argString);
+  const [err, tokenizedArgs] = tokenizeArgs(argString);
 
-  if (tokenizedArgs === null) {
-    message.channel.send(`>>> Malformed arguments.`);
+  if (err) {
+    message.channel.send(`>>> ${tokenizedArgs}.`);
     return;
   }
 
@@ -119,9 +119,9 @@ function splitRequestComponents(message) {
   const command = message.content;
   const spaceIndex = command.indexOf(' ');
 
-  if (spaceIndex === -1) return [command.slice(1), ""];
+  if (spaceIndex === -1) return [command.slice(1), ''];
 
-  return [command.slice(1, spaceIndex), command.slice(spaceIndex + 1)];
+  return [command.slice(1, spaceIndex), command.slice(spaceIndex + 1).trim()];
 }
 
 /**
@@ -149,10 +149,96 @@ function authorHasPermission(message, commandModule) {
 }
 
 /**
- * Tokenize the arguments.
+ * Tokenize the arguments. Unescaped double quotes are used to preserve
+ * whitespace. If double quotes contain only whitespace or nothing then its
+ * not counted as an argument. Escaped characters are expanded as they are
+ * encountered: \\ and \".
+ * An error occurs if:
+ *   1| the opening unescaped double quote is not preceeded by whitespace
+ *   2| the closing unescaped double quote is not followed by whitespace
+ *   3| there exists an unclosed unescaped double quote
+ *   4| an escape is used with a non escapable character (not \" or \\)
+ *   5| no character follows an escape at the end of argument string
+ * If no arguments are passed then an empty array is
+ * returned. If a tokenizing error occurs then the first element is set to
+ * true, indicating an error occured. The second element is a string indicating
+ * what error occured. If false then the first element is false and the second
+ * element is the tokenized arguments.
  * @param {String} argString
- * @returns {String[]}
+ * @returns {[boolean, string[]] | [boolean, string]}
  */
 function tokenizeArgs(argString) {
-  return (argString === '') ? [] : argString.split(' ');
+  argString = argString.trim();
+  if (argString === '') return [false, []];
+
+  const args = [];
+  let tokenizedArg = '';
+  let unclosedDoubleQuote = false;
+  let inEscape = false;
+
+  for (let i = 0; i < argString.length; ++i) {
+    // Check for error 4
+    if (!inEscape && argString[i] === '\\') {
+      inEscape = true;
+      // We dont add this to the token because we are expanding the following
+      // escape character.
+      continue;
+    } else if (inEscape && (argString[i] === '\\' || argString[i] === '"')) {
+      inEscape = false;
+      tokenizedArg += argString[i];
+      continue;
+    } else if (inEscape) {
+      return [true, `Unrecognized escape character: ${argString[i]}`];
+    }
+
+    // By logic above, this is not escaped
+    if (argString[i] === '"') {
+      // Check for errors 1 and 2
+      if (!unclosedDoubleQuote) { // Opening Double Quote
+        if (i !== 0 && !(('' + argString[i - 1]).match('\\s'))) {
+          return [true, 'Opening double quote not preceeded by whitespace'];
+        }
+
+        if (tokenizedArg !== '') {
+          args.push(tokenizedArg);
+          tokenizedArg = '';
+        }
+      } else if (unclosedDoubleQuote) { // Closing Double Quote
+        if (i !== argString.length - 1 &&
+            !(('' + argString[i + 1]).match('\\s'))) {
+          return [true, 'Closing double quote not followed by whitespace'];
+        }
+
+        if (!tokenizedArg.match('^\\s*$')) {
+          args.push(tokenizedArg);
+        }
+
+        tokenizedArg = '';
+      }
+
+      unclosedDoubleQuote = !unclosedDoubleQuote;
+    } else if (!unclosedDoubleQuote && ('' + argString[i]).match('\\s')) {
+      if (tokenizedArg !== '') {
+        args.push(tokenizedArg);
+        tokenizedArg = '';
+      }
+    } else {
+      tokenizedArg += argString[i];
+    }
+  }
+
+  // Check for errors 3 and 5
+  if (unclosedDoubleQuote) {
+    return [true, 'Missing closing double quote'];
+  } else if (inEscape) {
+    return [true, 'No character following escape at end of arguments'];
+  }
+
+  // If the last argument is not surrounded by unescaped double quotes
+  if (tokenizedArg !== '') {
+    args.push(tokenizedArg);
+    tokenizedArg === '';
+  }
+
+  return [false, args];
 }
