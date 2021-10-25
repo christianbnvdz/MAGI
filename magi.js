@@ -161,6 +161,7 @@ function authorHasPermission(message, commandModule) {
  *   2| the closing unescaped double quote is not followed by whitespace
  *   3| there exists an unclosed unescaped double quote
  *   4| an escape is used with a non escapable character (not \" or \\)
+ *   5| no character follows an escape at the end of argument string
  * If no arguments are passed then an empty array is
  * returned. If a tokenizing error occurs then null is returned.
  * @param {String} argString
@@ -173,38 +174,30 @@ function tokenizeArgs(argString) {
   console.log(argString);
 
   let unclosedDoubleQuote = false;
+  let inEscape = false;
   for (let i = 0; i < argString.length; ++i) {
-    // Check to see if previous character is an escape and check for error 4
-    if (i === 1) { // Possibility for an escape
-      if (argString[i - 1] === '\\') {
-        if (argString[i] !== '\\' && argString[i] !== '"') {
-          console.log('Unrecognized escape character: i == 1');
-          return null;
-        }
-        continue;
-      }
-    } else if (i > 1) { // Possibility for an escape or escaped backslash
-      if (argString[i - 1] === '\\' && argString[i - 2] !== '\\') {
-        if (argString[i] !== '\\' && argString[i] !== '"') {
-          console.log('Unrecognized escape character: i > 1');
-          return null;
-        }
-        continue;
-      }
+    // Check for error 4
+    if (!inEscape && argString[i] === '\\') {
+      inEscape = true;
+      continue;
+    } else if (inEscape &&
+               (argString[i] === '\\' || argString[i] === '"')) {
+      inEscape = false;
+      continue;
+    } else if (inEscape) {
+      console.log('Unrecognized escape character.');
+      return null;
     }
 
     // By logic above, this is not escaped
     if (argString[i] === '"') {
       // Check for errors 1 and 2
       if (!unclosedDoubleQuote && i !== 0) { // Opening Double Quote
-        console.log(('' + argString[i - 1]).match('\\s'));
         if (!(('' + argString[i - 1]).match('\\s'))) {
           console.log('Opening double quote is not preceeded by whitespace.');
           return null;
         }
       } else if (unclosedDoubleQuote && i !== argString.length - 1) { // Closing Double Quote
-        console.log(('' + argString[i + 1]));
-        console.log(argString[i + 1]);
         if (!(('' + argString[i + 1]).match('\\s'))) {
           console.log('Closing double quote is not followed by whitespace.');
           return null;
@@ -213,11 +206,13 @@ function tokenizeArgs(argString) {
 
       unclosedDoubleQuote = !unclosedDoubleQuote;
     }
-
   }
-  // Check for error 3
+  // Check for error 3 and 5
   if (unclosedDoubleQuote) {
     console.log('Uneven number of unescaped double quotes');
+    return null;
+  } else if (inEscape) {
+    console.log('No character following escape.');
     return null;
   }
 
