@@ -181,10 +181,10 @@ function tokenizeArgs(argString) {
     // Check for error 4
     if (!inEscape && argString[i] === '\\') {
       inEscape = true;
-      tokenizedArg += '\\';
+      // We dont add this to the token because we are expanding the following
+      // escape character.
       continue;
-    } else if (inEscape &&
-               (argString[i] === '\\' || argString[i] === '"')) {
+    } else if (inEscape && (argString[i] === '\\' || argString[i] === '"')) {
       inEscape = false;
       tokenizedArg += argString[i];
       continue;
