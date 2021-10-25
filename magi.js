@@ -35,7 +35,7 @@ client.on('messageCreate', message => {
     return;
   }
 
-  //commandModule.execute(message, tokenizedArgs);
+  commandModule.execute(message, tokenizedArgs);
 });
 
 client.commands = await client.commands;
@@ -173,16 +173,20 @@ function tokenizeArgs(argString) {
 
   console.log(argString);
 
+  const args = [];
+  let tokenizedArg = '';
   let unclosedDoubleQuote = false;
   let inEscape = false;
   for (let i = 0; i < argString.length; ++i) {
     // Check for error 4
     if (!inEscape && argString[i] === '\\') {
       inEscape = true;
+      tokenizedArg += '\\';
       continue;
     } else if (inEscape &&
                (argString[i] === '\\' || argString[i] === '"')) {
       inEscape = false;
+      tokenizedArg += argString[i];
       continue;
     } else if (inEscape) {
       console.log('Unrecognized escape character.');
@@ -192,21 +196,40 @@ function tokenizeArgs(argString) {
     // By logic above, this is not escaped
     if (argString[i] === '"') {
       // Check for errors 1 and 2
-      if (!unclosedDoubleQuote && i !== 0) { // Opening Double Quote
-        if (!(('' + argString[i - 1]).match('\\s'))) {
+      if (!unclosedDoubleQuote) { // Opening Double Quote
+        if (i !== 0 && !(('' + argString[i - 1]).match('\\s'))) {
           console.log('Opening double quote is not preceeded by whitespace.');
           return null;
         }
-      } else if (unclosedDoubleQuote && i !== argString.length - 1) { // Closing Double Quote
-        if (!(('' + argString[i + 1]).match('\\s'))) {
+
+        if (tokenizedArg !== '') {
+          args.push(tokenizedArg);
+          tokenizedArg = '';
+        }
+      } else if (unclosedDoubleQuote) { // Closing Double Quote
+        if (i !== argString.length - 1 && !(('' + argString[i + 1]).match('\\s'))) {
           console.log('Closing double quote is not followed by whitespace.');
           return null;
         }
+
+        if (!tokenizedArg.match('^\\s*$')) {
+          args.push(tokenizedArg);
+        }
+
+        tokenizedArg = '';
       }
 
       unclosedDoubleQuote = !unclosedDoubleQuote;
+    } else if (!unclosedDoubleQuote && ('' + argString[i]).match('\\s')) {
+      if (tokenizedArg !== '') {
+        args.push(tokenizedArg);
+        tokenizedArg = '';
+      }
+    } else {
+      tokenizedArg += argString[i];
     }
   }
+
   // Check for error 3 and 5
   if (unclosedDoubleQuote) {
     console.log('Uneven number of unescaped double quotes');
@@ -216,7 +239,14 @@ function tokenizeArgs(argString) {
     return null;
   }
 
-  return argString.split(' ');
+  // If the last argument is not surrounded by an unescaped double quote
+  if (tokenizedArg !== '') {
+    args.push(tokenizedArg);
+    tokenizedArg === '';
+  }
+
+  console.log(args);
+  return args;
 }
 
 // Tokens: 
