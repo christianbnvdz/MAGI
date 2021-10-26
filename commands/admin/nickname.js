@@ -34,15 +34,8 @@ async function execute(message, args) {
   }
 
   const oldNickname = member.displayName;
-  // Length of the prefix + length of the command name + the space + length of
-  // userId or mention + 1 for space + 1 for first character in nickname
-  // but - 1 to turn length into index.
-  const nickname =
-      message.content
-          .substring(
-              process.env.PREFIX.length + NAME.length + 1 + args[0].length + 1,
-              message.content.length)
-          .trim();
+  // 
+  const nickname = (args.length === 2) ? args[1].trim() : '';
 
   if (nickname === oldNickname) {
     message.channel.send('>>> Nickname is the same as before.');
@@ -120,6 +113,9 @@ async function getGuildMember(message, args) {
 function isValidCommand(args, channel) {
   if (!args.length) {
     channel.send(`>>> No user specified.\n${USAGE}`);
+    return false;
+  } else if (args.length > 2) {
+    channel.send(`>>> Too many arguments supplied.\n${USAGE}`);
     return false;
   }
 
