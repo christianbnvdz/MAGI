@@ -34,8 +34,9 @@ async function execute(message, args) {
   }
 
   const oldNickname = member.displayName;
-  // 
+  console.log(oldNickname);
   const nickname = (args.length === 2) ? args[1].trim() : '';
+  console.log(nickname);
 
   if (nickname === oldNickname) {
     message.channel.send('>>> Nickname is the same as before.');
@@ -97,7 +98,8 @@ async function getGuildMember(message, args) {
   if (args[0].startsWith('<@')) {
     guildMember = message.mentions.members.first();
   } else if (!isNaN(args[0])) {
-    guildMember = await message.guild.members.fetch(args[0]);
+    guildMember = await message.guild.members.fetch(
+                      {user: args[0], force: true});
   }
 
   return guildMember;
