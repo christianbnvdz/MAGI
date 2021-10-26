@@ -69,6 +69,10 @@ export {NAME, USAGE, DESCRIPTION, execute};
  * @return {MessageEmbed}
  */
 function generateSuccessEmbed(message, member, oldNickname, newNickname) {
+  // Prepare nickname strings to show up correctly in the embed
+  oldNickname = oldNickname.replaceAll(/\\/g, '\\\\');
+  newNickname = newNickname.replaceAll(/\\/g, '\\\\');
+  console.log(oldNickname, newNickname);
   const author = message.guild.members.cache.get(message.author.id);
   const updateType = (newNickname.length) ? 'Updated' : 'Removed';
   const descriptionTail = (newNickname.length) ?
