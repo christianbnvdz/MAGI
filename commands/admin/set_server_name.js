@@ -16,10 +16,7 @@ async function execute(message, args) {
   if (!isValidCommand(args, message.channel)) return;
 
   const messageText = message.content;
-  const serverName = messageText
-      .substring(
-          NAME.length + process.env.PREFIX.length + 1, messageText.length)
-      .trim();
+  const serverName = args[0].trim();
 
   if (serverName === message.guild.name) {
     message.channel.send('>>> Server name is unchanged.');
@@ -70,6 +67,9 @@ function generateSuccessEmbed(message, newServerName) {
 function isValidCommand(args, channel) {
   if (args.length === 0) {
     channel.send(`>>> You must provide a server name.\n${USAGE}`);
+    return false;
+  } else if (args.length > 1) {
+    channel.send(`>>> You must provide only one argument.\n${USAGE}`);
     return false;
   }
 

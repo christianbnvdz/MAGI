@@ -34,15 +34,9 @@ async function execute(message, args) {
   }
 
   const oldNickname = member.displayName;
-  // Length of the prefix + length of the command name + the space + length of
-  // userId or mention + 1 for space + 1 for first character in nickname
-  // but - 1 to turn length into index.
-  const nickname =
-      message.content
-          .substring(
-              process.env.PREFIX.length + NAME.length + 1 + args[0].length + 1,
-              message.content.length)
-          .trim();
+  console.log(oldNickname);
+  const nickname = (args.length === 2) ? args[1].trim() : '';
+  console.log(nickname);
 
   if (nickname === oldNickname) {
     message.channel.send('>>> Nickname is the same as before.');
@@ -75,6 +69,10 @@ export {NAME, USAGE, DESCRIPTION, execute};
  * @return {MessageEmbed}
  */
 function generateSuccessEmbed(message, member, oldNickname, newNickname) {
+  // Prepare nickname strings to show up correctly in the embed
+  oldNickname = oldNickname.replaceAll(/\\/g, '\\\\');
+  newNickname = newNickname.replaceAll(/\\/g, '\\\\');
+  console.log(oldNickname, newNickname);
   const author = message.guild.members.cache.get(message.author.id);
   const updateType = (newNickname.length) ? 'Updated' : 'Removed';
   const descriptionTail = (newNickname.length) ?
@@ -104,7 +102,8 @@ async function getGuildMember(message, args) {
   if (args[0].startsWith('<@')) {
     guildMember = message.mentions.members.first();
   } else if (!isNaN(args[0])) {
-    guildMember = await message.guild.members.fetch(args[0]);
+    guildMember = await message.guild.members.fetch(
+                      {user: args[0], force: true});
   }
 
   return guildMember;
@@ -120,6 +119,9 @@ async function getGuildMember(message, args) {
 function isValidCommand(args, channel) {
   if (!args.length) {
     channel.send(`>>> No user specified.\n${USAGE}`);
+    return false;
+  } else if (args.length > 2) {
+    channel.send(`>>> Too many arguments supplied.\n${USAGE}`);
     return false;
   }
 
